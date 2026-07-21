@@ -22,6 +22,8 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
 
   # Enable version updates for Python dependencies and build/dev tooling
   # (e.g. maturin, pytest), sourced from pyproject.toml
@@ -46,6 +48,8 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -59,3 +63,5 @@ updates:
       prefix: "chore(deps)"
     labels:
       - "dependencies"
+    cooldown:
+      default-days: 7
