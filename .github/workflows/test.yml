@@ -52,7 +52,7 @@ jobs:
           ruff check .
           ruff format --check .
 
-  # cargo test + pytest across the platforms we publish wheels for.
+  # cargo test + pytest across Ubuntu/macOS/Windows on supported Python versions.
   test:
     runs-on: ${{ matrix.os }}
     strategy:
