@@ -6,10 +6,6 @@ to make sure we only look at real runtime dependencies. It excludes the
 package itself, as well as build and development tools that may happen 
 to be installed in the environment.
 
-It also skips optional dependencies and marker-based dependencies that
-do not apply to the current Python interpreter, so the result matches 
-what is actually installed at runtime.
-
 """
 
 from importlib import metadata
