@@ -2,7 +2,11 @@ name: perm-test-caller
 on:
   push:
     branches: [test/reusable-permissions]
-permissions: {}          # <-- suspect: grants nothing
+    
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   call:
     uses: ./.github/workflows/_perm-test-reusable.yml
