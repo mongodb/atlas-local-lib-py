@@ -1,0 +1,8 @@
+name: perm-test-caller
+on:
+  push:
+    branches: [test/reusable-permissions]
+permissions: {}          # <-- suspect: grants nothing
+jobs:
+  call:
+    uses: ./.github/workflows/_perm-test-reusable.yml
