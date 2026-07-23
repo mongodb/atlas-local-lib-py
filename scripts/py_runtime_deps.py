@@ -1,9 +1,9 @@
-"""Print the runtime Python dependencies for this package, including 
+"""Print the runtime Python dependencies for this package, including
 transitive dependencies.
 
-This script is used by generate-third-party.sh and the license CI check 
-to make sure we only look at real runtime dependencies. It excludes the 
-package itself, as well as build and development tools that may happen 
+This script is used by generate-third-party.sh and the license CI check
+to make sure we only look at real runtime dependencies. It excludes the
+package itself, as well as build and development tools that may happen
 to be installed in the environment.
 
 """
