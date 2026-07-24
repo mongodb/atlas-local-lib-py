@@ -1,0 +1,13 @@
+# Skip the workspace crate itself (publish = false); only disclose third parties.
+private = { ignore = true }
+
+
+accepted = [
+    "0BSD",
+    "Apache-2.0",
+    "BSL-1.0",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Apache-2.0 WITH LLVM-exception",
+]
