@@ -9,6 +9,7 @@ to be installed in the environment.
 """
 
 from importlib import metadata
+
 from packaging.requirements import Requirement
 
 ROOT = "atlas-local-lib-py"
