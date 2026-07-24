@@ -16,16 +16,6 @@ env:
   # Tool versions (adapt as needed; not required to match atlas-local-lib).
   CARGO_DENY_VERSION: "0.16.3"
   CARGO_ABOUT_VERSION: "0.9.1"
-  # Allowed licenses for the Python layer. Must mirror deny.toml `licenses.allow`
-  # and about.toml `accepted`. pip-licenses matches the license string reported
-  # in package metadata, so several spellings of each SPDX id are listed.
-  PY_ALLOWED_LICENSES: >-
-    MIT License;MIT;
-    Apache Software License;Apache License 2.0;Apache 2.0;Apache-2.0;Apache-2.0 WITH LLVM-exception;
-    BSD Zero Clause License;0BSD;
-    The Unlicense (Unlicense);Unlicense;
-    Boost Software License 1.0 (BSL-1.0);BSL-1.0;
-    Unicode-3.0
 
 jobs:
   check:
@@ -72,16 +62,7 @@ jobs:
 
       # 2. Python dependency license policy.
       - name: Check Python dependency licenses
-        run: |
-          set -euo pipefail
-          deps="$(python scripts/py_runtime_deps.py | tr '\n' ' ')"
-          if [ -z "${deps}" ]; then
-            echo "No third-party Python runtime dependencies to check."
-            exit 0
-          fi
-          allowed="$(echo "${PY_ALLOWED_LICENSES}" | tr -d '\n' | tr -s ' ')"
-          echo "Checking: ${deps}"
-          pip-licenses --packages ${deps} --allow-only "${allowed}"
+        run: PYTHON="$(which python)" ./scripts/check-python-licenses.sh
 
       # 3. Regenerate LICENSE-3RD-PARTY.txt and fail if the checked-in copy is stale.
       - name: Regenerate LICENSE-3RD-PARTY.txt
