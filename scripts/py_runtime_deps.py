@@ -43,5 +43,12 @@ def closure(root):
 
 
 if __name__ == "__main__":
+    try:
+        metadata.distribution(ROOT)
+    except metadata.PackageNotFoundError as exc:
+        raise SystemExit(
+            f"Package '{ROOT}' is not installed; install it (e.g. `pip install .`) "
+            "before running this script."
+        ) from exc
     for name in closure(ROOT):
         print(name)
