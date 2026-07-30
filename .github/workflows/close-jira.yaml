@@ -1,8 +1,4 @@
-# sync -> mongodb/atlas-local-lib
-# sync -> mongodb/atlas-local-cli
-# sync -> mongodb-js/atlas-local-lib-js
-# sync -> mongodb/atlas-local-lib-py
-
+# synced from apix-actions/.github/workflows/close-jira.yaml
 name: Auto Close Jira
 
 on:
