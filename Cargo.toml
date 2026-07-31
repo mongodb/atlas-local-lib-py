@@ -9,7 +9,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "atlas_local_lib_py"
+name = "atlas_local"
 crate-type = ["cdylib"]
 
 [dependencies]
