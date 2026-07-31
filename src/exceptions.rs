@@ -102,6 +102,17 @@ create_exception!(
 );
 
 #[allow(dead_code)]
+pub(crate) trait IntoPyResult<T> {
+    fn into_pyresult(self) -> Result<T, PyErr>;
+}
+
+impl<T, E: IntoPyErr> IntoPyResult<T> for Result<T, E> {
+    fn into_pyresult(self) -> Result<T, PyErr> {
+        self.map_err(IntoPyErr::into_pyerr)
+    }
+}
+
+#[allow(dead_code)]
 pub(crate) trait IntoPyErr {
     fn into_pyerr(self) -> PyErr;
 }
