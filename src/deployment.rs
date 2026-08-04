@@ -81,6 +81,7 @@ impl LocalDeployment {
         self.inner.mongodb_load_sample_data
     }
 
+    // Uncomment when new atlas-local version is released with the new fields in the Deployment struct.
     //#[getter]
     //fn image(&self) -> Option <&str> {
     //    self.inner.image.as_deref()
@@ -122,6 +123,6 @@ impl LocalDeployment {
         self.inner == other.inner
     }
 
-    
+
 }
 

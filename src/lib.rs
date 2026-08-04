@@ -2,6 +2,11 @@ use pyo3::prelude::*;
 
 mod deployment;
 mod exceptions;
+mod runtime;
+mod create_deployment_options;
+mod create;
+mod get;
+mod list;
 
 #[pymodule]
 mod atlas_local {
@@ -9,7 +14,6 @@ mod atlas_local {
     
     #[pymodule_export]
     pub use crate::deployment::LocalDeployment;
-
 
     #[pymodule_init]
     fn init(module: &Bound<'_, PyModule>) -> PyResult<()> {
