@@ -13,7 +13,7 @@ THIRD PARTY LICENSES
 This file lists the licenses of the projects used in atlas-local-lib-py.
 
 OVERVIEW OF LICENSES:
-- Apache License 2.0 (94 dependencies)
+- Apache License 2.0 (95 dependencies)
 - Unicode License v3 (19 dependencies)
 - MIT License (18 dependencies)
 
@@ -3212,6 +3212,7 @@ limitations under the License.
         applies to:
         - android_system_properties 0.1.5 (https://github.com/nical/android_system_properties)
         - bollard-stubs 1.53.1-rc.29.3.1 (https://crates.io/crates/bollard-stubs)
+        - inventory 0.3.24 (https://github.com/dtolnay/inventory)
         - itoa 1.0.18 (https://github.com/dtolnay/itoa)
         - libc 0.2.186 (https://github.com/rust-lang/libc)
         - pin-project-lite 0.2.17 (https://github.com/taiki-e/pin-project-lite)
