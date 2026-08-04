@@ -101,6 +101,13 @@ create_exception!(
     "The deployment did not become healthy within the timeout."
 );
 
+create_exception!(
+    atlas_local,
+    DockerConnectionError,
+    AtlasLocalError,
+    "Could not connect to Docker. Make sure Docker is installed and running: https://docs.docker.com/get-docker/"
+);
+
 #[allow(dead_code)]
 pub(crate) trait IntoPyResult<T> {
     fn into_pyresult(self) -> Result<T, PyErr>;
@@ -112,183 +119,81 @@ impl<T, E: IntoPyErr> IntoPyResult<T> for Result<T, E> {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) trait IntoPyErr {
     fn into_pyerr(self) -> PyErr;
 }
 
-impl IntoPyErr for RsStartDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsStartDeploymentError::ContainerStart(message) => {
-                PyErr::new::<StartDeploymentError, _>(message)
-            }
-            RsStartDeploymentError::GetDeployment(err) => {
-                PyErr::new::<StartDeploymentError, _>(format!("Failed to get deployment: {err}"))
+macro_rules! into_pyerr {
+    ($rust_error:ty => $python_error:ty) => {
+        impl IntoPyErr for $rust_error {
+            fn into_pyerr(self) -> PyErr {
+                PyErr::new::<$python_error, _>(self.to_string())
             }
         }
-    }
+    };
 }
 
-impl IntoPyErr for RsStopDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsStopDeploymentError::ContainerStop(message) => {
-                PyErr::new::<StopDeploymentError, _>(message)
-            }
-            RsStopDeploymentError::GetDeployment(err) => {
-                PyErr::new::<StopDeploymentError, _>(format!("Failed to get deployment: {err}"))
-            }
-        }
-    }
-}
+into_pyerr!(RsStartDeploymentError => StartDeploymentError);
+into_pyerr!(RsStopDeploymentError => StopDeploymentError);
+into_pyerr!(RsPauseDeploymentError => PauseDeploymentError);
+into_pyerr!(RsUnpauseDeploymentError => UnpauseDeploymentError);
+into_pyerr!(RsGetDeploymentError => GetDeploymentError);
+into_pyerr!(RsGetConnectionStringError => GetConnectionStringError);
+into_pyerr!(RsGetLogsError => GetLogsError);
+into_pyerr!(RsDeleteDeploymentError => DeleteDeploymentError);
 
-impl IntoPyErr for RsPauseDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsPauseDeploymentError::ContainerPause(message) => {
-                PyErr::new::<PauseDeploymentError, _>(message)
-            }
-            RsPauseDeploymentError::GetDeployment(err) => {
-                PyErr::new::<PauseDeploymentError, _>(format!("Failed to get deployment: {err}"))
-            }
-        }
-    }
-}
-
-impl IntoPyErr for RsUnpauseDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsUnpauseDeploymentError::ContainerUnpause(message) => {
-                PyErr::new::<UnpauseDeploymentError, _>(message)
-            }
-            RsUnpauseDeploymentError::GetDeployment(err) => {
-                PyErr::new::<UnpauseDeploymentError, _>(format!("Failed to get deployment: {err}"))
-            }
-        }
-    }
-}
-
-impl IntoPyErr for RsGetDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsGetDeploymentError::ContainerInspect(err) => {
-                PyErr::new::<GetDeploymentError, _>(format!("Failed to inspect container: {err}"))
-            }
-            RsGetDeploymentError::IntoDeployment(err) => PyErr::new::<GetDeploymentError, _>(
-                format!("Failed to convert container into deployment: {err}"),
-            ),
-        }
-    }
-}
 
 impl IntoPyErr for RsCreateDeploymentError {
     fn into_pyerr(self) -> PyErr {
+        let message = self.to_string();
+
         match self {
-            RsCreateDeploymentError::CreateContainer(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!("Failed to create container: {err}"))
-            }
-            RsCreateDeploymentError::PullImage(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!("Failed to pull image: {err}"))
-            }
-            RsCreateDeploymentError::ContainerAlreadyExists(message) => {
-                PyErr::new::<CreateDeploymentError, _>(message)
-            }
-            RsCreateDeploymentError::ContainerInspect(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!(
-                    "Failed to inspect container: {err}"
-                ))
-            }
-            RsCreateDeploymentError::UnhealthyDeployment(message) => {
-                PyErr::new::<CreateDeploymentError, _>(message)
-            }
-            RsCreateDeploymentError::GetDeploymentError(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!("Failed to get deployment: {err}"))
-            }
-            RsCreateDeploymentError::WatchDeployment(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!("Failed to watch deployment: {err}"))
-            }
-            RsCreateDeploymentError::ReceiveDeployment(err) => {
-                PyErr::new::<CreateDeploymentError, _>(format!(
-                    "Failed to receive deployment: {err}"
-                ))
-            }
-            RsCreateDeploymentError::InvalidImage(message) => {
+            RsCreateDeploymentError::WatchDeployment(
+                RsWatchDeploymentError::Timeout { .. },
+            ) => PyErr::new::<DeploymentTimeoutError, _>(message),
+
+            RsCreateDeploymentError::WatchDeployment(
+                RsWatchDeploymentError::UnhealthyDeployment { .. },
+            ) => PyErr::new::<UnhealthyDeploymentError, _>(message),
+
+            RsCreateDeploymentError::WatchDeployment(
+                RsWatchDeploymentError::ContainerInspect(_),
+            ) => PyErr::new::<CreateDeploymentError, _>(message),
+
+            RsCreateDeploymentError::CreateContainer(_)
+            | RsCreateDeploymentError::PullImage(_)
+            | RsCreateDeploymentError::ContainerAlreadyExists(_)
+            | RsCreateDeploymentError::ContainerInspect(_)
+            | RsCreateDeploymentError::UnhealthyDeployment(_)
+            | RsCreateDeploymentError::GetDeploymentError(_)
+            | RsCreateDeploymentError::ReceiveDeployment(_)
+            | RsCreateDeploymentError::InvalidImage(_) => {
                 PyErr::new::<CreateDeploymentError, _>(message)
             }
         }
     }
 }
 
-impl IntoPyErr for RsGetConnectionStringError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsGetConnectionStringError::GetDeployment(err) => {
-                PyErr::new::<GetConnectionStringError, _>(format!(
-                    "Failed to get deployment: {err}"
-                ))
-            }
-            RsGetConnectionStringError::GetMongodbUsername(err) => {
-                PyErr::new::<GetConnectionStringError, _>(format!(
-                    "Failed to get MongoDB username: {err}"
-                ))
-            }
-            RsGetConnectionStringError::GetMongodbPassword(err) => {
-                PyErr::new::<GetConnectionStringError, _>(format!(
-                    "Failed to get MongoDB password: {err}"
-                ))
-            }
-            RsGetConnectionStringError::MissingPortBinding => {
-                PyErr::new::<GetConnectionStringError, _>("The deployment has no port binding.")
-            }
-        }
-    }
-}
 
-impl IntoPyErr for RsGetLogsError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsGetLogsError::ContainerLogs(message) => PyErr::new::<GetLogsError, _>(message),
-        }
-    }
-}
-
-impl IntoPyErr for RsDeleteDeploymentError {
-    fn into_pyerr(self) -> PyErr {
-        match self {
-            RsDeleteDeploymentError::ContainerStop(err) => {
-                PyErr::new::<DeleteDeploymentError, _>(format!("Failed to stop container: {err}"))
-            }
-            RsDeleteDeploymentError::ContainerRemove(err) => {
-                PyErr::new::<DeleteDeploymentError, _>(format!("Failed to remove container: {err}"))
-            }
-            RsDeleteDeploymentError::GetDeployment(err) => {
-                PyErr::new::<DeleteDeploymentError, _>(format!("Failed to get deployment: {err}"))
-            }
-        }
-    }
-}
 
 impl IntoPyErr for RsWatchDeploymentError {
     fn into_pyerr(self) -> PyErr {
+        let message = self.to_string();
+
         match self {
-            RsWatchDeploymentError::ContainerInspect(err) => {
-                PyErr::new::<WatchDeploymentError, _>(format!("Failed to inspect container: {err}"))
+            RsWatchDeploymentError::Timeout { .. } => {
+                PyErr::new::<DeploymentTimeoutError, _>(message)
             }
-            RsWatchDeploymentError::Timeout { deployment_name } => {
-                PyErr::new::<DeploymentTimeoutError, _>(format!(
-                    "Timeout while waiting for deployment {deployment_name} to become healthy."
-                ))
+            RsWatchDeploymentError::UnhealthyDeployment { .. } => {
+                PyErr::new::<UnhealthyDeploymentError, _>(message)
             }
-            RsWatchDeploymentError::UnhealthyDeployment {
-                deployment_name,
-                status,
-            } => PyErr::new::<UnhealthyDeploymentError, _>(format!(
-                "Deployment {deployment_name} is unhealthy. Status: {status:?}"
-            )),
+            RsWatchDeploymentError::ContainerInspect(_) => {
+                PyErr::new::<WatchDeploymentError, _>(message)
+            }
         }
     }
 }
+
 
 pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("AtlasLocalError", module.py().get_type::<AtlasLocalError>())?;
@@ -341,6 +246,10 @@ pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
         "DeploymentTimeoutError",
         module.py().get_type::<DeploymentTimeoutError>(),
     )?;
+    module.add(
+        "DockerConnectionError",
+        module.py().get_type::<DockerConnectionError>(),
+    )?;
     Ok(())
 }
 
@@ -348,7 +257,7 @@ pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use atlas_local::{DockerError as RsDockerError};
+    use atlas_local::DockerError as RsDockerError;
 
     #[test]
     fn test_create_deployment_server_error_into_pyerr() {
@@ -376,13 +285,13 @@ mod tests {
 
     #[test]
     fn test_container_unpause_error_into_pyerr() {
-        let error = RsUnpauseDeploymentError::ContainerUnpause("Failed to unpause container".to_string());
+        let error = RsUnpauseDeploymentError::ContainerUnpause("container is not paused".to_string());
 
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
             assert!(py_error.is_instance_of::<UnpauseDeploymentError>(py));
-            assert_eq!(py_error.value(py).to_string(), "Failed to unpause container");
+            assert_eq!(py_error.value(py).to_string(), "Failed to unpause container: container is not paused");
         });
     }
 
@@ -393,8 +302,87 @@ mod tests {
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
-            assert!(py_error.is_instance_of::<WatchDeploymentError>(py));
-            assert_eq!(py_error.value(py).to_string(), "Deployment test_deployment is unhealthy. Status: Unhealthy");
+            assert!(py_error.is_instance_of::<UnhealthyDeploymentError>(py));
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Deployment test_deployment is not healthy [status: unhealthy]"
+            );
         });
     }
+
+    #[test]
+    fn test_create_timeout_maps_to_timeout_error() {
+        let error = RsCreateDeploymentError::WatchDeployment(
+            RsWatchDeploymentError::Timeout {
+                deployment_name: "test_deployment".to_owned(),
+            },
+        );
+
+        Python::initialize();
+        Python::attach(|py| {
+            let py_error = error.into_pyerr();
+
+            assert!(py_error.is_instance_of::<DeploymentTimeoutError>(py));
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Error when waiting for deployment to become healthy: \
+                Timeout while waiting for container test_deployment to become healthy"
+            );
+
+        });
+    }
+
+    #[test]
+    fn test_create_unhealthy_maps_to_unhealthy_error() {
+        let error = RsCreateDeploymentError::WatchDeployment(
+            RsWatchDeploymentError::UnhealthyDeployment {
+                deployment_name: "test_deployment".to_owned(),
+                status: atlas_local::ContainerHealthStatus::Unhealthy,
+            },
+        );
+
+        Python::initialize();
+        Python::attach(|py| {
+            let py_error = error.into_pyerr();
+
+            assert!(py_error.is_instance_of::<UnhealthyDeploymentError>(py));
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Error when waiting for deployment to become healthy: \
+                Deployment test_deployment is not healthy [status: unhealthy]"
+            );
+
+        });
+    }
+
+    #[test]
+    fn test_macro_generated_mappings() {
+        Python::initialize();
+        Python::attach(|py| {
+            let docker_error = || RsDockerError::ServerError;
+
+            assert!(
+                RsGetDeploymentError::ContainerInspect(docker_error())
+                    .into_pyerr()
+                    .is_instance_of::<GetDeploymentError>(py)
+            );
+            assert!(
+                RsStartDeploymentError::ContainerStart("boom".into())
+                    .into_pyerr()
+                    .is_instance_of::<StartDeploymentError>(py)
+            );
+            assert!(
+                RsStopDeploymentError::ContainerStop("boom".into())
+                    .into_pyerr()
+                    .is_instance_of::<StopDeploymentError>(py)
+            );
+            assert!(
+                RsGetLogsError::ContainerLogs("boom".into())
+                    .into_pyerr()
+                    .is_instance_of::<GetLogsError>(py)
+            );
+        });
+    }
+
+
 }
