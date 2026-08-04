@@ -8,10 +8,7 @@ use crate::runtime::get_context;
 impl LocalDeployment {
     /// Retrieve a deployment by name or container ID.
     #[staticmethod]
-    fn get(
-        py: Python<'_>,
-        container_id_or_name: String,
-    ) -> PyResult<Self> {
+    fn get(py: Python<'_>, container_id_or_name: String) -> PyResult<Self> {
         let context = get_context()?;
         let client = context.client()?;
 

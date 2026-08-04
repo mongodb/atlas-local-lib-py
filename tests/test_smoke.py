@@ -16,5 +16,6 @@ def test_methods_are_exposed():
     assert callable(deployment.get)
     assert callable(deployment.list)
 
+
 def test_class_module_is_public_name():
     assert atlas_local.LocalDeployment.__module__ == "atlas_local"

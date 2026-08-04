@@ -4,11 +4,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use atlas_local::models::{
-    BindingType,
-    CreationSource,
-    CreateDeploymentOptions,
-    ImageTag,
-    MongoDBPortBinding,
+    BindingType, CreateDeploymentOptions, CreationSource, ImageTag, MongoDBPortBinding,
 };
 
 pub(crate) struct CreateArgs {
@@ -43,16 +39,14 @@ pub(crate) fn build_create_deployment_options(
             u64::try_from(seconds)
                 .map(Duration::from_secs)
                 .map_err(|_| {
-                    PyValueError::new_err(
-                        "wait_until_healthy_timeout must be non-negative",
-                    )
+                    PyValueError::new_err("wait_until_healthy_timeout must be non-negative")
                 })
         })
         .transpose()?;
 
-    let mongodb_port_binding = args.mongodb_port_binding.map(|port| {
-        MongoDBPortBinding::new(Some(port), BindingType::Loopback)
-    });
+    let mongodb_port_binding = args
+        .mongodb_port_binding
+        .map(|port| MongoDBPortBinding::new(Some(port), BindingType::Loopback));
 
     let creation_source = Some(CreationSource::Unknown("PYTHON".to_owned()));
 
@@ -153,14 +147,25 @@ mod tests {
         assert_eq!(options.name.as_deref(), Some("n"));
         assert_eq!(options.image.as_deref(), Some("i"));
         assert_eq!(options.image_tag, Some(ImageTag::Latest));
-        assert_eq!(options.mongodb_initdb_root_username.as_deref(), Some("user"));
-        assert_eq!(options.mongodb_initdb_root_password.as_deref(), Some("pass"));
+        assert_eq!(
+            options.mongodb_initdb_root_username.as_deref(),
+            Some("user")
+        );
+        assert_eq!(
+            options.mongodb_initdb_root_password.as_deref(),
+            Some("pass")
+        );
         assert_eq!(options.voyage_api_key.as_deref(), Some("key"));
         assert_eq!(options.local_seed_location.as_deref(), Some("/seed"));
-        assert_eq!(options.wait_until_healthy_timeout, Some(Duration::from_secs(30)));
+        assert_eq!(
+            options.wait_until_healthy_timeout,
+            Some(Duration::from_secs(30))
+        );
         assert_eq!(options.skip_pull_image, Some(true));
         // Marca de telemetría: si cambia, el equipo pierde la atribución de uso.
-        assert_eq!(options.creation_source, Some(CreationSource::Unknown("PYTHON".into())));
+        assert_eq!(
+            options.creation_source,
+            Some(CreationSource::Unknown("PYTHON".into()))
+        );
     }
-
 }

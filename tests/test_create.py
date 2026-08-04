@@ -1,5 +1,5 @@
-import pytest
 import atlas_local
+import pytest
 
 
 def test_negative_timeout_raises_value_error():

@@ -142,23 +142,22 @@ into_pyerr!(RsGetConnectionStringError => GetConnectionStringError);
 into_pyerr!(RsGetLogsError => GetLogsError);
 into_pyerr!(RsDeleteDeploymentError => DeleteDeploymentError);
 
-
 impl IntoPyErr for RsCreateDeploymentError {
     fn into_pyerr(self) -> PyErr {
         let message = self.to_string();
 
         match self {
-            RsCreateDeploymentError::WatchDeployment(
-                RsWatchDeploymentError::Timeout { .. },
-            ) => PyErr::new::<DeploymentTimeoutError, _>(message),
+            RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::Timeout {
+                ..
+            }) => PyErr::new::<DeploymentTimeoutError, _>(message),
 
             RsCreateDeploymentError::WatchDeployment(
                 RsWatchDeploymentError::UnhealthyDeployment { .. },
             ) => PyErr::new::<UnhealthyDeploymentError, _>(message),
 
-            RsCreateDeploymentError::WatchDeployment(
-                RsWatchDeploymentError::ContainerInspect(_),
-            ) => PyErr::new::<CreateDeploymentError, _>(message),
+            RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::ContainerInspect(
+                _,
+            )) => PyErr::new::<CreateDeploymentError, _>(message),
 
             RsCreateDeploymentError::CreateContainer(_)
             | RsCreateDeploymentError::PullImage(_)
@@ -173,8 +172,6 @@ impl IntoPyErr for RsCreateDeploymentError {
         }
     }
 }
-
-
 
 impl IntoPyErr for RsWatchDeploymentError {
     fn into_pyerr(self) -> PyErr {
@@ -193,7 +190,6 @@ impl IntoPyErr for RsWatchDeploymentError {
         }
     }
 }
-
 
 pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("AtlasLocalError", module.py().get_type::<AtlasLocalError>())?;
@@ -218,10 +214,7 @@ pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
         "GetConnectionStringError",
         module.py().get_type::<GetConnectionStringError>(),
     )?;
-    module.add(
-        "GetLogsError",
-        module.py().get_type::<GetLogsError>(),
-    )?;
+    module.add("GetLogsError", module.py().get_type::<GetLogsError>())?;
     module.add(
         "PauseDeploymentError",
         module.py().get_type::<PauseDeploymentError>(),
@@ -253,7 +246,6 @@ pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,37 +259,53 @@ mod tests {
         Python::attach(|py| {
             let py_error = error.into_pyerr();
             assert!(py_error.is_instance_of::<CreateDeploymentError>(py));
-            assert_eq!(py_error.value(py).to_string(), "Failed to create container: internal server error");
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Failed to create container: internal server error"
+            );
         });
     }
 
     #[test]
     fn test_create_deployment_other_error_into_pyerr() {
-        let error = RsCreateDeploymentError::CreateContainer(RsDockerError::Other { status_code: Some(503), message: ("Service Unavailable").to_string() });
+        let error = RsCreateDeploymentError::CreateContainer(RsDockerError::Other {
+            status_code: Some(503),
+            message: ("Service Unavailable").to_string(),
+        });
 
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
             assert!(py_error.is_instance_of::<CreateDeploymentError>(py));
-            assert_eq!(py_error.value(py).to_string(), "Failed to create container: docker error (status Some(503)): Service Unavailable");
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Failed to create container: docker error (status Some(503)): Service Unavailable"
+            );
         });
     }
 
     #[test]
     fn test_container_unpause_error_into_pyerr() {
-        let error = RsUnpauseDeploymentError::ContainerUnpause("container is not paused".to_string());
+        let error =
+            RsUnpauseDeploymentError::ContainerUnpause("container is not paused".to_string());
 
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
             assert!(py_error.is_instance_of::<UnpauseDeploymentError>(py));
-            assert_eq!(py_error.value(py).to_string(), "Failed to unpause container: container is not paused");
+            assert_eq!(
+                py_error.value(py).to_string(),
+                "Failed to unpause container: container is not paused"
+            );
         });
     }
 
     #[test]
     fn test_watch_deployment_unhealthy_error_into_pyerr() {
-        let error = RsWatchDeploymentError::UnhealthyDeployment { deployment_name: "test_deployment".to_string(), status: (atlas_local::ContainerHealthStatus::Unhealthy) };
+        let error = RsWatchDeploymentError::UnhealthyDeployment {
+            deployment_name: "test_deployment".to_string(),
+            status: (atlas_local::ContainerHealthStatus::Unhealthy),
+        };
 
         Python::initialize();
         Python::attach(|py| {
@@ -312,11 +320,9 @@ mod tests {
 
     #[test]
     fn test_create_timeout_maps_to_timeout_error() {
-        let error = RsCreateDeploymentError::WatchDeployment(
-            RsWatchDeploymentError::Timeout {
-                deployment_name: "test_deployment".to_owned(),
-            },
-        );
+        let error = RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::Timeout {
+            deployment_name: "test_deployment".to_owned(),
+        });
 
         Python::initialize();
         Python::attach(|py| {
@@ -328,18 +334,16 @@ mod tests {
                 "Error when waiting for deployment to become healthy: \
                 Timeout while waiting for container test_deployment to become healthy"
             );
-
         });
     }
 
     #[test]
     fn test_create_unhealthy_maps_to_unhealthy_error() {
-        let error = RsCreateDeploymentError::WatchDeployment(
-            RsWatchDeploymentError::UnhealthyDeployment {
+        let error =
+            RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::UnhealthyDeployment {
                 deployment_name: "test_deployment".to_owned(),
                 status: atlas_local::ContainerHealthStatus::Unhealthy,
-            },
-        );
+            });
 
         Python::initialize();
         Python::attach(|py| {
@@ -351,7 +355,6 @@ mod tests {
                 "Error when waiting for deployment to become healthy: \
                 Deployment test_deployment is not healthy [status: unhealthy]"
             );
-
         });
     }
 
@@ -383,6 +386,4 @@ mod tests {
             );
         });
     }
-
-
 }

@@ -32,27 +32,25 @@ pub(crate) fn get_context() -> PyResult<&'static PythonContext> {
 impl PythonContext {
     pub(crate) fn client(&self) -> PyResult<atlas_local::Client> {
         let mut cached_client = self
-        .client
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+            .client
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(client) = cached_client.as_ref() {
             return Ok(client.clone());
         }
 
-        let new_client =
-            atlas_local::Client::connect_with_defaults().map_err(|error| {
-                DockerConnectionError::new_err(format!(
-                    "Could not connect to Docker.\n\
+        let new_client = atlas_local::Client::connect_with_defaults().map_err(|error| {
+            DockerConnectionError::new_err(format!(
+                "Could not connect to Docker.\n\
                      Make sure Docker is installed and running: \
                      https://docs.docker.com/get-docker/\n\
                      Details: {error}"
-                ))
-            })?;
+            ))
+        })?;
 
         *cached_client = Some(new_client.clone());
 
         Ok(new_client)
     }
 }
-

@@ -1,5 +1,6 @@
 import atlas_local
 
+
 def test_exception_hierarchy():
     assert issubclass(
         atlas_local.StartDeploymentError,
@@ -18,11 +19,13 @@ def test_exception_hierarchy():
         atlas_local.WatchDeploymentError,
     )
 
+
 def test_docker_connection_error_hierarchy():
     assert issubclass(
         atlas_local.DockerConnectionError,
         atlas_local.AtlasLocalError,
     )
+
 
 def test_exceptions_are_exported():
     assert atlas_local.AtlasLocalError

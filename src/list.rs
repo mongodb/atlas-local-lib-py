@@ -15,11 +15,7 @@ impl LocalDeployment {
         let client = context.client()?;
 
         let deployments = py
-            .detach(|| {
-                context
-                    .runtime
-                    .block_on(client.list_deployments())
-            })
+            .detach(|| context.runtime.block_on(client.list_deployments()))
             .into_pyresult()?;
 
         deployments

@@ -2,7 +2,6 @@ use atlas_local::models::{BindingType, Deployment as RsDeployment, MongodbType};
 
 use pyo3::prelude::*;
 
-
 #[pyclass(module = "atlas_local", name = "LocalDeployment", frozen)]
 pub struct LocalDeployment {
     inner: RsDeployment,
@@ -22,7 +21,6 @@ impl LocalDeployment {
 
 #[pymethods]
 impl LocalDeployment {
-
     #[getter]
     fn container_id(&self) -> &str {
         &self.inner.container_id
@@ -94,20 +92,20 @@ impl LocalDeployment {
 
     #[getter]
     fn port_bindings(&self) -> Option<String> {
-        self.inner.port_bindings.as_ref().map(|binding| {
-            match &binding.binding_type {
+        self.inner
+            .port_bindings
+            .as_ref()
+            .map(|binding| match &binding.binding_type {
                 BindingType::Loopback => "127.0.0.1".to_owned(),
                 BindingType::AnyInterface => "0.0.0.0".to_owned(),
                 BindingType::Specific { ip } => ip.to_string(),
-            }
-        })
+            })
     }
 
     #[getter]
     fn do_not_track(&self) -> bool {
         self.inner.do_not_track
     }
-    
 
     fn __repr__(&self) -> String {
         format!(
@@ -122,7 +120,4 @@ impl LocalDeployment {
     fn __eq__(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
-
-
 }
-
