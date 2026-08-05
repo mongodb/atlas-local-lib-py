@@ -23,6 +23,20 @@ pub(crate) struct CreateArgs {
     pub do_not_track: Option<bool>,
 }
 
+fn tool_identifier(in_jupyter: bool) -> CreationSource {
+    let tool = if in_jupyter {
+        "PYTHON_LIB_JUPYTER"
+    } else {
+        "PYTHON_LIB"
+    };
+
+    CreationSource::Unknown(tool.to_owned())
+}
+
+fn running_in_jupyter() -> bool {
+    std::env::var_os("JPY_PARENT_PID").is_some()
+}
+
 pub(crate) fn build_create_deployment_options(
     args: CreateArgs,
 ) -> PyResult<CreateDeploymentOptions> {
@@ -48,7 +62,7 @@ pub(crate) fn build_create_deployment_options(
         .mongodb_port_binding
         .map(|port| MongoDBPortBinding::new(Some(port), BindingType::Loopback));
 
-    let creation_source = Some(CreationSource::Unknown("PYTHON".to_owned()));
+    let creation_source = Some(tool_identifier(running_in_jupyter()));
 
     Ok(CreateDeploymentOptions {
         name: args.name,
@@ -162,10 +176,21 @@ mod tests {
             Some(Duration::from_secs(30))
         );
         assert_eq!(options.skip_pull_image, Some(true));
-        // Marca de telemetría: si cambia, el equipo pierde la atribución de uso.
         assert_eq!(
             options.creation_source,
-            Some(CreationSource::Unknown("PYTHON".into()))
+            Some(tool_identifier(running_in_jupyter()))
+        );
+    }
+
+    #[test]
+    fn test_tool_identifier() {
+        assert_eq!(
+            tool_identifier(false),
+            CreationSource::Unknown("PYTHON_LIB".to_owned())
+        );
+        assert_eq!(
+            tool_identifier(true),
+            CreationSource::Unknown("PYTHON_LIB_JUPYTER".to_owned())
         );
     }
 }
