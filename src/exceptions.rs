@@ -370,17 +370,17 @@ mod tests {
                     .is_instance_of::<GetDeploymentError>(py)
             );
             assert!(
-                RsStartDeploymentError::ContainerStart("boom".into())
+                RsStartDeploymentError::ContainerStart("error".into())
                     .into_pyerr()
                     .is_instance_of::<StartDeploymentError>(py)
             );
             assert!(
-                RsStopDeploymentError::ContainerStop("boom".into())
+                RsStopDeploymentError::ContainerStop("error".into())
                     .into_pyerr()
                     .is_instance_of::<StopDeploymentError>(py)
             );
             assert!(
-                RsGetLogsError::ContainerLogs("boom".into())
+                RsGetLogsError::ContainerLogs("error".into())
                     .into_pyerr()
                     .is_instance_of::<GetLogsError>(py)
             );

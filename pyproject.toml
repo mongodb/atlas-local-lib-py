@@ -3,9 +3,6 @@ requires = ["maturin>=1.14,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
-# The distribution is `atlas-local-lib-py` on PyPI, but it is imported as
-# `atlas_local`. Kept separate from `[lib] name` in Cargo.toml so the crate's
-# own lib name does not collide with the `atlas_local` Rust dependency.
 module-name = "atlas_local"
 
 [project]

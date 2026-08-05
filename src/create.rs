@@ -14,7 +14,8 @@ impl LocalDeployment {
         image_tag=None,
         skip_pull_image=None,
         load_sample_data=None,
-        mongodb_port_binding=None,
+        port=None,
+        ip=None,
         wait_until_healthy=None,
         wait_until_healthy_timeout=None,
         local_seed_location=None,
@@ -31,7 +32,8 @@ impl LocalDeployment {
         image_tag: Option<String>,
         skip_pull_image: Option<bool>,
         load_sample_data: Option<bool>,
-        mongodb_port_binding: Option<u16>,
+        port: Option<u16>,
+        ip: Option<String>,
         wait_until_healthy: Option<bool>,
         wait_until_healthy_timeout: Option<i64>,
         local_seed_location: Option<String>,
@@ -46,7 +48,8 @@ impl LocalDeployment {
             image_tag,
             skip_pull_image,
             load_sample_data,
-            mongodb_port_binding,
+            port,
+            ip,
             wait_until_healthy,
             wait_until_healthy_timeout,
             local_seed_location,
@@ -59,8 +62,6 @@ impl LocalDeployment {
         let context = get_context()?;
         let client = context.client()?;
 
-        // Release the GIL: creating a deployment can pull an image and wait for
-        // the container to become healthy.
         // `create_deployment` must be called inside the Tokio runtime because it
         // spawns the deployment task. The returned progress value is then awaited
         // until the deployment completes.

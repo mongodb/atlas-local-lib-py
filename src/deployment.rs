@@ -92,14 +92,18 @@ impl LocalDeployment {
 
     #[getter]
     fn port_bindings(&self) -> Option<String> {
-        self.inner
-            .port_bindings
-            .as_ref()
-            .map(|binding| match &binding.binding_type {
+        self.inner.port_bindings.as_ref().map(|binding| {
+            let ip = match &binding.binding_type {
                 BindingType::Loopback => "127.0.0.1".to_owned(),
                 BindingType::AnyInterface => "0.0.0.0".to_owned(),
                 BindingType::Specific { ip } => ip.to_string(),
-            })
+            };
+
+            match binding.port {
+                Some(port) => format!("{ip}/{port}"),
+                None => ip,
+            }
+        })
     }
 
     #[getter]

@@ -13,7 +13,8 @@ pub(crate) struct CreateArgs {
     pub skip_pull_image: Option<bool>,
     pub image_tag: Option<String>,
     pub load_sample_data: Option<bool>,
-    pub mongodb_port_binding: Option<u16>,
+    pub port: Option<u16>,
+    pub ip: Option<String>,
     pub wait_until_healthy: Option<bool>,
     pub wait_until_healthy_timeout: Option<i64>,
     pub local_seed_location: Option<String>,
@@ -21,6 +22,26 @@ pub(crate) struct CreateArgs {
     pub mongodb_initdb_root_password: Option<String>,
     pub voyage_api_key: Option<String>,
     pub do_not_track: Option<bool>,
+}
+
+fn port_binding(port: Option<u16>, ip: Option<&str>) -> PyResult<Option<MongoDBPortBinding>> {
+    if port.is_none() && ip.is_none() {
+        return Ok(None);
+    }
+
+    let binding_type = match ip {
+        None | Some("127.0.0.1") => BindingType::Loopback,
+        Some("0.0.0.0") => BindingType::AnyInterface,
+        Some(ip) => BindingType::Specific {
+            ip: ip.parse().map_err(|_| {
+                PyValueError::new_err(format!(
+                    "ip must be an IP address such as '127.0.0.1' or '0.0.0.0', got {ip:?}"
+                ))
+            })?,
+        },
+    };
+
+    Ok(Some(MongoDBPortBinding::new(port, binding_type)))
 }
 
 fn tool_identifier(in_jupyter: bool) -> CreationSource {
@@ -53,14 +74,14 @@ pub(crate) fn build_create_deployment_options(
             u64::try_from(seconds)
                 .map(Duration::from_secs)
                 .map_err(|_| {
-                    PyValueError::new_err("wait_until_healthy_timeout must be non-negative")
+                    PyValueError::new_err(
+                        "wait_until_healthy_timeout must be non-negative number of seconds",
+                    )
                 })
         })
         .transpose()?;
 
-    let mongodb_port_binding = args
-        .mongodb_port_binding
-        .map(|port| MongoDBPortBinding::new(Some(port), BindingType::Loopback));
+    let mongodb_port_binding = port_binding(args.port, args.ip.as_deref())?;
 
     let creation_source = Some(tool_identifier(running_in_jupyter()));
 
@@ -86,6 +107,7 @@ pub(crate) fn build_create_deployment_options(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
 
     fn empty_args() -> CreateArgs {
         CreateArgs {
@@ -94,7 +116,8 @@ mod tests {
             skip_pull_image: None,
             image_tag: None,
             load_sample_data: None,
-            mongodb_port_binding: None,
+            port: None,
+            ip: None,
             wait_until_healthy: None,
             wait_until_healthy_timeout: None,
             local_seed_location: None,
@@ -106,9 +129,16 @@ mod tests {
     }
 
     #[test]
-    fn test_port_binding_is_bound_to_loopback() {
+    fn test_leaving_binding_to_atlas_local() {
+        let options = build_create_deployment_options(empty_args()).unwrap();
+
+        assert_eq!(options.mongodb_port_binding, None);
+    }
+
+    #[test]
+    fn test_port_defaults_to_loopback() {
         let args = CreateArgs {
-            mongodb_port_binding: Some(27017),
+            port: Some(27017),
             ..empty_args()
         };
 
@@ -118,6 +148,95 @@ mod tests {
             options.mongodb_port_binding,
             Some(MongoDBPortBinding::new(Some(27017), BindingType::Loopback))
         );
+    }
+
+    #[test]
+    fn test_loopback_address_maps_to_loopback() {
+        let args = CreateArgs {
+            port: Some(27017),
+            ip: Some("127.0.0.1".into()),
+            ..empty_args()
+        };
+
+        let options = build_create_deployment_options(args).unwrap();
+
+        assert_eq!(
+            options.mongodb_port_binding,
+            Some(MongoDBPortBinding::new(Some(27017), BindingType::Loopback))
+        );
+    }
+
+    #[test]
+    fn test_unspecified_address() {
+        let args = CreateArgs {
+            port: Some(27017),
+            ip: Some("0.0.0.0".into()),
+            ..empty_args()
+        };
+
+        let options = build_create_deployment_options(args).unwrap();
+
+        assert_eq!(
+            options.mongodb_port_binding,
+            Some(MongoDBPortBinding::new(
+                Some(27017),
+                BindingType::AnyInterface
+            ))
+        );
+    }
+
+    #[test]
+    fn test_other_address() {
+        let args = CreateArgs {
+            port: Some(27017),
+            ip: Some("1.2.3.4".into()),
+            ..empty_args()
+        };
+
+        let options = build_create_deployment_options(args).unwrap();
+
+        assert_eq!(
+            options.mongodb_port_binding,
+            Some(MongoDBPortBinding::new(
+                Some(27017),
+                BindingType::Specific {
+                    ip: IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)),
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_ip_without_port() {
+        let args = CreateArgs {
+            ip: Some("0.0.0.0".into()),
+            ..empty_args()
+        };
+
+        let options = build_create_deployment_options(args).unwrap();
+
+        assert_eq!(
+            options.mongodb_port_binding,
+            Some(MongoDBPortBinding::new(None, BindingType::AnyInterface))
+        );
+    }
+
+    #[test]
+    fn test_invalid_ip_is_rejected() {
+        let args = CreateArgs {
+            ip: Some("AnyInterface".into()),
+            ..empty_args()
+        };
+
+        Python::initialize();
+        Python::attach(|py| {
+            let error = build_create_deployment_options(args).unwrap_err();
+            assert!(error.is_instance_of::<PyValueError>(py));
+            assert_eq!(
+                error.value(py).to_string(),
+                "ip must be an IP address such as '127.0.0.1' or '0.0.0.0', got \"AnyInterface\""
+            );
+        });
     }
 
     #[test]
@@ -133,7 +252,7 @@ mod tests {
             assert!(error.is_instance_of::<PyValueError>(py));
             assert_eq!(
                 error.value(py).to_string(),
-                "wait_until_healthy_timeout must be non-negative"
+                "wait_until_healthy_timeout must be non-negative number of seconds"
             );
         });
     }
@@ -146,7 +265,8 @@ mod tests {
             image_tag: Some("latest".into()),
             skip_pull_image: Some(true),
             load_sample_data: Some(true),
-            mongodb_port_binding: Some(27017),
+            port: Some(27017),
+            ip: Some("1.2.3.4".into()),
             wait_until_healthy: Some(true),
             wait_until_healthy_timeout: Some(30),
             local_seed_location: Some("/seed".into()),
@@ -176,6 +296,18 @@ mod tests {
             Some(Duration::from_secs(30))
         );
         assert_eq!(options.skip_pull_image, Some(true));
+        assert_eq!(options.load_sample_data, Some(true));
+        assert_eq!(options.wait_until_healthy, Some(true));
+        assert_eq!(options.do_not_track, Some(true));
+        assert_eq!(
+            options.mongodb_port_binding,
+            Some(MongoDBPortBinding::new(
+                Some(27017),
+                BindingType::Specific {
+                    ip: IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)),
+                }
+            ))
+        );
         assert_eq!(
             options.creation_source,
             Some(tool_identifier(running_in_jupyter()))
