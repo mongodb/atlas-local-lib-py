@@ -35,11 +35,13 @@ def exercise_static_methods(container_id_or_name):
     LocalDeployment.start_deployment(container_id_or_name)
     LocalDeployment.delete_deployment(container_id_or_name)
 
+
 @pytest.mark.parametrize("identifier", ["name", "container_id"])
 def test_static_methods_accept_container_id_or_name(deployment, identifier):
     container_id_or_name = getattr(deployment, identifier)
 
-    exercise_static_methods(container_id_or_name) #Static methods should accept both name and container_id.
+    # Static methods should accept both name and container_id.
+    exercise_static_methods(container_id_or_name)
 
     with pytest.raises(atlas_local.GetDeploymentError):
         LocalDeployment.get(container_id_or_name)
