@@ -1,13 +1,22 @@
 use pyo3::prelude::*;
 
-/// A Python module implemented in Rust.
+mod create;
+mod create_deployment_options;
+mod deployment;
+mod exceptions;
+mod get;
+mod list;
+mod runtime;
+
 #[pymodule]
-mod atlas_local_lib_py {
+mod atlas_local {
     use pyo3::prelude::*;
 
-    /// Formats the sum of two numbers as string.
-    #[pyfunction]
-    fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-        Ok((a + b).to_string())
+    #[pymodule_export]
+    pub use crate::deployment::LocalDeployment;
+
+    #[pymodule_init]
+    fn init(module: &Bound<'_, PyModule>) -> PyResult<()> {
+        crate::exceptions::register(module)
     }
 }

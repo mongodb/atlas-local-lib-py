@@ -2,6 +2,9 @@
 requires = ["maturin>=1.14,<2.0"]
 build-backend = "maturin"
 
+[tool.maturin]
+module-name = "atlas_local"
+
 [project]
 name = "atlas-local-lib-py"
 requires-python = ">=3.9"

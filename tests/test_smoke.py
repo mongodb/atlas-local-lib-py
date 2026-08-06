@@ -1,15 +1,21 @@
 """Smoke test for the compiled extension module.
 
-Confirms the Rust-Python boundary is wired up and importable. Replace/extend
-with real tests (e.g. get_or_create, exception mapping) as the API lands.
+Confirms the Rust-Python boundary is wired up and importable.
 """
 
-import atlas_local_lib_py
+import atlas_local
 
 
 def test_module_imports():
-    assert atlas_local_lib_py is not None
+    assert atlas_local is not None
 
 
-def test_sum_as_string():
-    assert atlas_local_lib_py.sum_as_string(2, 3) == "5"
+def test_methods_are_exposed():
+    deployment = atlas_local.LocalDeployment
+    assert callable(deployment.create)
+    assert callable(deployment.get)
+    assert callable(deployment.list)
+
+
+def test_class_module_is_public_name():
+    assert atlas_local.LocalDeployment.__module__ == "atlas_local"

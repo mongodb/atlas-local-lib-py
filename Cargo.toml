@@ -9,10 +9,10 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "atlas_local_lib_py"
+name = "atlas_local"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.29.0", features = ["abi3-py39", "chrono"] }
+pyo3 = { version = "0.29.0", features = ["abi3-py39", "chrono", "multiple-pymethods"] }
 atlas-local = "0.7.1"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
