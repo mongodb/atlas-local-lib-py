@@ -16,3 +16,10 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.29.0", features = ["abi3-py39", "chrono", "multiple-pymethods"] }
 atlas-local = "0.7.1"
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+
+# Erase this when a new version of atlas-local is released.
+[patch.crates-io]
+atlas-local = {
+    git = "https://github.com/mongodb/atlas-local-lib",
+    rev = "7da5c550b35def921d26c296861ef5399155547f",
+}
