@@ -47,7 +47,7 @@ fn start_deployment(
 
 #[pymethods]
 impl LocalDeployment {
-    /// Start a stopped or paused deployment, making it available for connections again.
+    /// Start a stopped or paused deployment.
     #[pyo3(signature = (wait_until_healthy=true, wait_until_healthy_timeout=None))]
     fn start(
         &self,

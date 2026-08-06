@@ -18,7 +18,7 @@ fn stop_deployment(py: Python<'_>, container_id_or_name: &str) -> PyResult<()> {
 
 #[pymethods]
 impl LocalDeployment {
-    /// Stop a running deployment, making it unavailable for connections.
+    /// Stop a running deployment.
     fn stop(&self, py: Python<'_>) -> PyResult<()> {
         stop_deployment(py, &self.inner().container_id)
     }
