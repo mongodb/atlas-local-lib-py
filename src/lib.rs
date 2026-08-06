@@ -2,11 +2,16 @@ use pyo3::prelude::*;
 
 mod create;
 mod create_deployment_options;
+mod delete;
 mod deployment;
 mod exceptions;
 mod get;
 mod list;
+mod pause;
 mod runtime;
+mod start;
+mod stop;
+mod unpause;
 
 #[pymodule]
 mod atlas_local {

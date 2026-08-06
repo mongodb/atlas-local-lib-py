@@ -15,6 +15,16 @@ def test_methods_are_exposed():
     assert callable(deployment.create)
     assert callable(deployment.get)
     assert callable(deployment.list)
+    assert callable(deployment.start)
+    assert callable(deployment.stop)
+    assert callable(deployment.pause)
+    assert callable(deployment.unpause)
+    assert callable(deployment.delete)
+    assert callable(deployment.start_deployment)
+    assert callable(deployment.stop_deployment)
+    assert callable(deployment.pause_deployment)
+    assert callable(deployment.unpause_deployment)
+    assert callable(deployment.delete_deployment)
 
 
 def test_class_module_is_public_name():
