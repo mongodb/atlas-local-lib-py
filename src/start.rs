@@ -6,8 +6,7 @@ use pyo3::prelude::*;
 use atlas_local::models::StartDeploymentOptions;
 
 use crate::deployment::LocalDeployment;
-use crate::exceptions::IntoPyResult;
-use crate::runtime::get_context;
+use crate::runtime::runtime_block_on;
 
 fn parse_timeout(seconds: Option<i64>) -> PyResult<Option<Duration>> {
     seconds
@@ -23,7 +22,7 @@ fn parse_timeout(seconds: Option<i64>) -> PyResult<Option<Duration>> {
         .transpose()
 }
 
-fn start_deployment(
+fn run_start(
     py: Python<'_>,
     container_id_or_name: &str,
     wait_until_healthy: bool,
@@ -34,15 +33,9 @@ fn start_deployment(
         wait_until_healthy_timeout: parse_timeout(wait_until_healthy_timeout)?,
     };
 
-    let context = get_context()?;
-    let client = context.client()?;
-
-    py.detach(|| {
-        context
-            .runtime
-            .block_on(client.start_deployment(container_id_or_name, options))
+    runtime_block_on(py, |client| async move {
+        client.start_deployment(container_id_or_name, options).await
     })
-    .into_pyresult()
 }
 
 #[pymethods]
@@ -55,7 +48,7 @@ impl LocalDeployment {
         wait_until_healthy: bool,
         wait_until_healthy_timeout: Option<i64>,
     ) -> PyResult<()> {
-        start_deployment(
+        run_start(
             py,
             &self.inner().container_id,
             wait_until_healthy,
@@ -76,7 +69,7 @@ impl LocalDeployment {
         wait_until_healthy: bool,
         wait_until_healthy_timeout: Option<i64>,
     ) -> PyResult<()> {
-        start_deployment(
+        run_start(
             py,
             &container_id_or_name,
             wait_until_healthy,

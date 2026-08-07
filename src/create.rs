@@ -2,8 +2,7 @@ use pyo3::prelude::*;
 
 use crate::create_deployment_options::{CreateArgs, build_create_deployment_options};
 use crate::deployment::LocalDeployment;
-use crate::exceptions::IntoPyResult;
-use crate::runtime::get_context;
+use crate::runtime::runtime_block_on;
 
 #[pymethods]
 impl LocalDeployment {
@@ -59,19 +58,12 @@ impl LocalDeployment {
             do_not_track,
         })?;
 
-        let context = get_context()?;
-        let client = context.client()?;
-
         // `create_deployment` must be called inside the Tokio runtime because it
         // spawns the deployment task. The returned progress value is then awaited
         // until the deployment completes.
-        let deployment = py
-            .detach(|| {
-                context
-                    .runtime
-                    .block_on(async { client.create_deployment(options).await })
-            })
-            .into_pyresult()?;
+        let deployment = runtime_block_on(py, |client| async move {
+            client.create_deployment(options).await
+        })?;
 
         Ok(LocalDeployment::from(deployment))
     }
