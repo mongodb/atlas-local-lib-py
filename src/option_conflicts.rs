@@ -317,14 +317,9 @@ mod tests {
     fn test_binding_not_requested_ignored() {
         let conflicts = conflicts_of(
             None,
-            Some(MongoDBPortBinding::new(
-                Some(27017),
-                BindingType::Loopback,
-            )),
+            Some(MongoDBPortBinding::new(Some(27017), BindingType::Loopback)),
         );
 
         assert!(conflicts.is_empty());
     }
-
-
 }
