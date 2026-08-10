@@ -1,8 +1,10 @@
+use std::future::Future;
 use std::sync::{Mutex, OnceLock};
 
+use pyo3::marker::Ungil;
 use pyo3::prelude::*;
 
-use crate::exceptions::DockerConnectionError;
+use crate::exceptions::{DockerConnectionError, IntoPyErr, IntoPyResult};
 
 pub(crate) struct PythonContext {
     pub(crate) runtime: tokio::runtime::Runtime,
@@ -27,6 +29,20 @@ pub(crate) fn get_context() -> PyResult<&'static PythonContext> {
              Original error: {error}"
         ))),
     }
+}
+
+pub(crate) fn runtime_block_on<T, E, F, Fut>(py: Python<'_>, operation: F) -> PyResult<T>
+where
+    F: FnOnce(atlas_local::Client) -> Fut + Ungil + Send,
+    Fut: Future<Output = Result<T, E>>,
+    T: Ungil + Send,
+    E: IntoPyErr + Ungil + Send,
+{
+    let context = get_context()?;
+    let client = context.client()?;
+
+    py.detach(|| context.runtime.block_on(operation(client)))
+        .into_pyresult()
 }
 
 impl PythonContext {

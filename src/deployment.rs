@@ -79,16 +79,15 @@ impl LocalDeployment {
         self.inner.mongodb_load_sample_data
     }
 
-    // Uncomment when new atlas-local version is released with the new fields in the Deployment struct.
-    //#[getter]
-    //fn image(&self) -> Option <&str> {
-    //    self.inner.image.as_deref()
-    //}
+    #[getter]
+    fn image(&self) -> Option<&str> {
+        self.inner.image.as_deref()
+    }
 
-    //#[getter]
-    //fn image_tag(&self) -> Option<String> {
-    //    self.inner.image_tag.clone()
-    //}
+    #[getter]
+    fn image_tag(&self) -> Option<String> {
+        self.inner.image_tag.as_ref().map(ToString::to_string)
+    }
 
     #[getter]
     fn port_bindings(&self) -> Option<String> {
