@@ -16,7 +16,7 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "pymongo"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
