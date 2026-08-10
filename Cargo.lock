@@ -35,6 +35,7 @@ name = "atlas-local-lib-py"
 version = "0.1.0"
 dependencies = [
  "atlas-local",
+ "chrono",
  "pyo3",
  "tokio",
 ]
