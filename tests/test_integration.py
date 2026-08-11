@@ -69,7 +69,6 @@ def test_full_lifecycle(deployment):
 
     deployment.unpause()
     assert state_of(name) == "running"
-    logs = deployment.logs()
 
     deployment.delete()
     with pytest.raises(atlas_local.GetDeploymentError):
