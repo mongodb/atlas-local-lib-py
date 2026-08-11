@@ -18,7 +18,7 @@ impl LocalDeployment {
 
     /// Get the connection string for a deployment by name or container ID.
     #[staticmethod]
-    fn connection_string_deployment(
+    fn get_connection_string(
         py: Python<'_>,
         container_id_or_name: String,
     ) -> PyResult<String> {
