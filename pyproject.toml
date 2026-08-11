@@ -7,13 +7,23 @@ module-name = "atlas_local"
 
 [project]
 name = "atlas-local-lib-py"
-requires-python = ">=3.9"
+description = "Python library for managing Atlas local environments."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+requires-python = ">=3.10"
+authors = [{ name = "APIx DevTools team" }]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/mongodb/atlas-local-lib-py"
+Repository = "https://github.com/mongodb/atlas-local-lib-py"
+Issues = "https://github.com/mongodb/atlas-local-lib-py/issues"
 
 [project.optional-dependencies]
 test = ["pytest", "pymongo"]
@@ -24,6 +34,3 @@ testpaths = ["tests"]
 # run them with `pytest -m integration`.
 addopts = "-m 'not integration'"
 markers = ["integration: requires a running Docker daemon"]
-
-[tool.ruff]
-target-version = "py39"
