@@ -54,11 +54,15 @@ fn tool_identifier(in_jupyter: bool) -> CreationSource {
     CreationSource::Unknown(tool.to_owned())
 }
 
-fn running_in_jupyter() -> bool {
-    std::env::var_os("JPY_PARENT_PID").is_some()
+fn running_in_jupyter(py: Python<'_>) -> bool {
+    py.import("sys")
+        .and_then(|sys| sys.getattr("modules"))
+        .and_then(|modules| modules.contains("ipykernel"))
+        .unwrap_or(false)
 }
 
 pub(crate) fn build_create_deployment_options(
+    py: Python<'_>,
     args: CreateArgs,
 ) -> PyResult<CreateDeploymentOptions> {
     let image_tag = args
@@ -83,7 +87,7 @@ pub(crate) fn build_create_deployment_options(
 
     let mongodb_port_binding = port_binding(args.port, args.ip.as_deref())?;
 
-    let creation_source = Some(tool_identifier(running_in_jupyter()));
+    let creation_source = Some(tool_identifier(running_in_jupyter(py)));
 
     Ok(CreateDeploymentOptions {
         name: args.name,
@@ -109,6 +113,11 @@ mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
 
+    fn options_of(args: CreateArgs) -> PyResult<CreateDeploymentOptions> {
+        Python::initialize();
+        Python::attach(|py| build_create_deployment_options(py, args))
+    }
+
     fn empty_args() -> CreateArgs {
         CreateArgs {
             name: None,
@@ -130,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_leaving_binding_to_atlas_local() {
-        let options = build_create_deployment_options(empty_args()).unwrap();
+        let options = options_of(empty_args()).unwrap();
 
         assert_eq!(options.mongodb_port_binding, None);
     }
@@ -142,7 +151,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -158,7 +167,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -174,7 +183,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -193,7 +202,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -213,7 +222,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -230,7 +239,7 @@ mod tests {
 
         Python::initialize();
         Python::attach(|py| {
-            let error = build_create_deployment_options(args).unwrap_err();
+            let error = build_create_deployment_options(py, args).unwrap_err();
             assert!(error.is_instance_of::<PyValueError>(py));
             assert_eq!(
                 error.value(py).to_string(),
@@ -248,7 +257,7 @@ mod tests {
 
         Python::initialize();
         Python::attach(|py| {
-            let error = build_create_deployment_options(args).unwrap_err();
+            let error = build_create_deployment_options(py, args).unwrap_err();
             assert!(error.is_instance_of::<PyValueError>(py));
             assert_eq!(
                 error.value(py).to_string(),
@@ -276,7 +285,7 @@ mod tests {
             do_not_track: Some(true),
         };
 
-        let options = build_create_deployment_options(args).unwrap();
+        let options = options_of(args).unwrap();
 
         assert_eq!(options.name.as_deref(), Some("n"));
         assert_eq!(options.image.as_deref(), Some("i"));
@@ -308,10 +317,13 @@ mod tests {
                 }
             ))
         );
-        assert_eq!(
-            options.creation_source,
-            Some(tool_identifier(running_in_jupyter()))
-        );
+        Python::initialize();
+        Python::attach(|py| {
+            assert_eq!(
+                options.creation_source,
+                Some(tool_identifier(running_in_jupyter(py)))
+            );
+        });
     }
 
     #[test]

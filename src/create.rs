@@ -41,22 +41,25 @@ impl LocalDeployment {
         voyage_api_key: Option<String>,
         do_not_track: Option<bool>,
     ) -> PyResult<Self> {
-        let options = build_create_deployment_options(CreateArgs {
-            name,
-            image,
-            image_tag,
-            skip_pull_image,
-            load_sample_data,
-            port,
-            ip,
-            wait_until_healthy,
-            wait_until_healthy_timeout,
-            local_seed_location,
-            mongodb_initdb_root_username,
-            mongodb_initdb_root_password,
-            voyage_api_key,
-            do_not_track,
-        })?;
+        let options = build_create_deployment_options(
+            py,
+            CreateArgs {
+                name,
+                image,
+                image_tag,
+                skip_pull_image,
+                load_sample_data,
+                port,
+                ip,
+                wait_until_healthy,
+                wait_until_healthy_timeout,
+                local_seed_location,
+                mongodb_initdb_root_username,
+                mongodb_initdb_root_password,
+                voyage_api_key,
+                do_not_track,
+            },
+        )?;
 
         // `create_deployment` must be called inside the Tokio runtime because it
         // spawns the deployment task. The returned progress value is then awaited
