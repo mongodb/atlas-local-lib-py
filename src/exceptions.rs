@@ -133,7 +133,6 @@ impl IntoPyErr for RsCreateDeploymentError {
                  the configured timeout.\n\
                  Increase `wait_until_healthy_timeout`, or inspect the deployment logs for additional details."
             )),
-            // Both paths mean the same thing, so they get the same type and text.
             RsCreateDeploymentError::UnhealthyDeployment(deployment_name)
             | RsCreateDeploymentError::WatchDeployment(
                 RsWatchDeploymentError::UnhealthyDeployment {
@@ -279,7 +278,7 @@ impl IntoPyErr for RsStartDeploymentError {
         match self {
             RsStartDeploymentError::ContainerStart(_) => PyErr::new::<StartDeploymentError, _>(
                 "Failed to start the deployment.\n\
-                     A paused deployment cannot be started; use `unpause()` or `stop()` first.",
+                A paused deployment cannot be started; use `unpause()` or `stop()` first.",
             ),
             RsStartDeploymentError::GetDeployment(_) => {
                 PyErr::new::<StartDeploymentError, _>("Failed to verify the deployment's status")
