@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+mod connection_string;
 mod create;
 mod create_deployment_options;
 mod delete;
@@ -8,6 +9,7 @@ mod exceptions;
 mod get;
 mod get_or_create;
 mod list;
+mod logs;
 mod option_conflicts;
 mod pause;
 mod runtime;

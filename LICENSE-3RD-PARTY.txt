@@ -3218,11 +3218,11 @@ limitations under the License.
         - pin-project-lite 0.2.17 (https://github.com/taiki-e/pin-project-lite)
         - portable-atomic 1.13.1 (https://github.com/taiki-e/portable-atomic)
         - proc-macro2 1.0.106 (https://github.com/dtolnay/proc-macro2)
-        - pyo3-build-config 0.29.0 (https://github.com/pyo3/pyo3)
-        - pyo3-ffi 0.29.0 (https://github.com/pyo3/pyo3)
-        - pyo3-macros-backend 0.29.0 (https://github.com/pyo3/pyo3)
-        - pyo3-macros 0.29.0 (https://github.com/pyo3/pyo3)
-        - pyo3 0.29.0 (https://github.com/pyo3/pyo3)
+        - pyo3-build-config 0.29.1 (https://github.com/pyo3/pyo3)
+        - pyo3-ffi 0.29.1 (https://github.com/pyo3/pyo3)
+        - pyo3-macros-backend 0.29.1 (https://github.com/pyo3/pyo3)
+        - pyo3-macros 0.29.1 (https://github.com/pyo3/pyo3)
+        - pyo3 0.29.1 (https://github.com/pyo3/pyo3)
         - quote 1.0.46 (https://github.com/dtolnay/quote)
         - r-efi 6.0.0 (https://github.com/r-efi/r-efi)
         - rand 0.10.2 (https://github.com/rust-random/rand)
@@ -3918,7 +3918,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                         MIT License
         applies to:
         - tokio-util 0.7.18 (https://github.com/tokio-rs/tokio)
-        - tokio 1.53.0 (https://github.com/tokio-rs/tokio)
+        - tokio 1.53.1 (https://github.com/tokio-rs/tokio)
 -----------------------------------------------------------------------------
 
 MIT License

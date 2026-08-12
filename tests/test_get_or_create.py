@@ -38,14 +38,6 @@ def timed(call):
     return result, time.perf_counter() - started
 
 
-# Drop this helper to use deployment.connection_string() once implemented.
-def connection_string(deployment):
-    """Builds a direct connection URI from the published port binding."""
-    ip, _, port = deployment.port_bindings.partition("/")
-
-    return f"mongodb://{ip}:{port}/?directConnection=true"
-
-
 def test_re_running(name):
     created, creation_seconds = timed(
         lambda: LocalDeployment.get_or_create(name=name, load_sample_data=True)
@@ -68,7 +60,7 @@ def test_re_running(name):
     )
 
     # Check that the sample data survives.
-    client = pymongo.MongoClient(connection_string(existing))
+    client = pymongo.MongoClient(existing.connection_string())
     try:
         assert "sample_mflix" in client.list_database_names()
         assert client["sample_mflix"]["movies"].estimated_document_count() > 0
