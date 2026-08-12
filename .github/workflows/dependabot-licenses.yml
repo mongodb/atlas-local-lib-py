@@ -1,0 +1,108 @@
+name: Update third-party licenses
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: update-third-party-licenses-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  update-licenses:
+    name: Regenerate LICENSE-3RD-PARTY.txt
+    runs-on: ubuntu-latest
+
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        startsWith(github.event.pull_request.head.ref, 'dependabot/cargo/') ||
+        startsWith(github.event.pull_request.head.ref, 'dependabot/pip/')
+      )
+
+    env:
+      CARGO_ABOUT_VERSION: "0.9.1"
+
+    steps:
+      - name: Create APIx bot token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ secrets.APIXBOT_APP_ID }}
+          private-key: ${{ secrets.APIXBOT_APP_PEM }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+
+      - name: Checkout Dependabot branch
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.x"
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-license-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-license-
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@732870f031d2fb36309d0deaf36abcc704a7be65 # v1.20.1
+
+      - name: Install cargo-about
+        run: |
+          cargo binstall \
+            --no-confirm \
+            --locked \
+            --version "${CARGO_ABOUT_VERSION}" \
+            cargo-about
+
+      - name: Install package and Python tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install . pip-licenses packaging
+
+      - name: Regenerate LICENSE-3RD-PARTY.txt
+        run: |
+          set -euo pipefail
+          PYTHON="$(which python)" ./scripts/generate-third-party.sh
+
+      - name: Commit and push updated licenses
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- LICENSE-3RD-PARTY.txt; then
+            echo "LICENSE-3RD-PARTY.txt is already up to date"
+            exit 0
+          fi
+
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
+
+          git add LICENSE-3RD-PARTY.txt
+          git commit -m "chore(deps): update LICENSE-3RD-PARTY.txt"
+          git push origin "HEAD:${BRANCH}"
