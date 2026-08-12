@@ -1,3 +1,4 @@
+use atlas_local::DockerError as RsDockerError;
 use atlas_local::client::{
     CreateDeploymentError as RsCreateDeploymentError,
     DeleteDeploymentError as RsDeleteDeploymentError,
@@ -108,7 +109,6 @@ create_exception!(
     "Could not connect to Docker. Make sure Docker is installed and running: https://docs.docker.com/get-docker/"
 );
 
-#[allow(dead_code)]
 pub(crate) trait IntoPyResult<T> {
     fn into_pyresult(self) -> Result<T, PyErr>;
 }
@@ -123,51 +123,129 @@ pub(crate) trait IntoPyErr {
     fn into_pyerr(self) -> PyErr;
 }
 
-macro_rules! into_pyerr {
-    ($rust_error:ty => $python_error:ty) => {
-        impl IntoPyErr for $rust_error {
-            fn into_pyerr(self) -> PyErr {
-                PyErr::new::<$python_error, _>(self.to_string())
-            }
-        }
-    };
-}
-
-into_pyerr!(RsStartDeploymentError => StartDeploymentError);
-into_pyerr!(RsStopDeploymentError => StopDeploymentError);
-into_pyerr!(RsPauseDeploymentError => PauseDeploymentError);
-into_pyerr!(RsUnpauseDeploymentError => UnpauseDeploymentError);
-into_pyerr!(RsGetDeploymentError => GetDeploymentError);
-into_pyerr!(RsGetConnectionStringError => GetConnectionStringError);
-into_pyerr!(RsGetLogsError => GetLogsError);
-into_pyerr!(RsDeleteDeploymentError => DeleteDeploymentError);
-
 impl IntoPyErr for RsCreateDeploymentError {
     fn into_pyerr(self) -> PyErr {
-        let message = self.to_string();
-
         match self {
             RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::Timeout {
-                ..
-            }) => PyErr::new::<DeploymentTimeoutError, _>(message),
-
-            RsCreateDeploymentError::WatchDeployment(
-                RsWatchDeploymentError::UnhealthyDeployment { .. },
-            ) => PyErr::new::<UnhealthyDeploymentError, _>(message),
-
+                deployment_name,
+            }) => PyErr::new::<DeploymentTimeoutError, _>(format!(
+                "The deployment {deployment_name} was created but did not become healthy within \
+                 the configured timeout.\n\
+                 Increase `wait_until_healthy_timeout`, or inspect the deployment logs for additional details."
+            )),
+            RsCreateDeploymentError::UnhealthyDeployment(deployment_name)
+            | RsCreateDeploymentError::WatchDeployment(
+                RsWatchDeploymentError::UnhealthyDeployment {
+                    deployment_name, ..
+                },
+            ) => PyErr::new::<UnhealthyDeploymentError, _>(format!(
+                "The deployment {deployment_name} was created but ended up in an unhealthy \
+                 state.\n\
+                 Inspect the deployment logs for additional details."
+            )),
             RsCreateDeploymentError::WatchDeployment(RsWatchDeploymentError::ContainerInspect(
                 _,
-            )) => PyErr::new::<CreateDeploymentError, _>(message),
+            ))
+            | RsCreateDeploymentError::GetDeploymentError(_) => {
+                PyErr::new::<CreateDeploymentError, _>(
+                    "The deployment was created but its status could not be verified",
+                )
+            }
+            RsCreateDeploymentError::CreateContainer(_) => PyErr::new::<CreateDeploymentError, _>(
+                "Docker failed to create the deployment's container",
+            ),
+            RsCreateDeploymentError::PullImage(_) => PyErr::new::<CreateDeploymentError, _>(
+                "Failed to pull the deployment's image.\n\
+                     Check your network connection and that the `image` and `image_tag` exist.",
+            ),
+            RsCreateDeploymentError::ContainerAlreadyExists(name) => {
+                PyErr::new::<CreateDeploymentError, _>(format!(
+                    "A deployment named {name:?} already exists.\n\
+                     Delete it first, or use `get_or_create()` to reuse it."
+                ))
+            }
+            RsCreateDeploymentError::ContainerInspect(_) => PyErr::new::<CreateDeploymentError, _>(
+                "Failed to inspect the deployment's container",
+            ),
+            RsCreateDeploymentError::ReceiveDeployment(_) => {
+                PyErr::new::<CreateDeploymentError, _>(
+                    "Failed to receive confirmation of the created deployment",
+                )
+            }
+            RsCreateDeploymentError::InvalidImage(image) => {
+                PyErr::new::<CreateDeploymentError, _>(format!(
+                    "The image {image:?} must not include a tag.\n\
+                     Use the `image_tag` field to specify a tag."
+                ))
+            }
+        }
+    }
+}
 
-            RsCreateDeploymentError::CreateContainer(_)
-            | RsCreateDeploymentError::PullImage(_)
-            | RsCreateDeploymentError::ContainerAlreadyExists(_)
-            | RsCreateDeploymentError::ContainerInspect(_)
-            | RsCreateDeploymentError::UnhealthyDeployment(_)
-            | RsCreateDeploymentError::GetDeploymentError(_)
-            | RsCreateDeploymentError::ReceiveDeployment(_)
-            | RsCreateDeploymentError::InvalidImage(_) => {
-                PyErr::new::<CreateDeploymentError, _>(message)
+impl IntoPyErr for RsDeleteDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            RsDeleteDeploymentError::ContainerStop(_) => {
+                "Failed to stop the deployment's container"
+            }
+            RsDeleteDeploymentError::ContainerRemove(_) => {
+                "Failed to remove the deployment's container"
+            }
+            RsDeleteDeploymentError::GetDeployment(_) => "Failed to verify the deployment's status",
+        };
+
+        PyErr::new::<DeleteDeploymentError, _>(message)
+    }
+}
+
+impl IntoPyErr for RsGetConnectionStringError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            RsGetConnectionStringError::GetDeployment(_) => {
+                "Failed to verify the deployment's status"
+            }
+            RsGetConnectionStringError::GetMongodbUsername(_) => {
+                "Failed to retrieve the deployment's MongoDB username"
+            }
+            RsGetConnectionStringError::GetMongodbPassword(_) => {
+                "Failed to retrieve the deployment's MongoDB password"
+            }
+            RsGetConnectionStringError::MissingPortBinding => {
+                "The deployment does not have a published MongoDB port.\n\
+                 If it is stopped, call `start()` first; if it is paused, call `unpause()`.\n\
+                 If it was created without a published port, recreate it with the `port` \
+                 argument to make it accessible from the host."
+            }
+        };
+
+        PyErr::new::<GetConnectionStringError, _>(message)
+    }
+}
+
+impl IntoPyErr for RsGetDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            RsGetDeploymentError::ContainerInspect(RsDockerError::NotFound) => {
+                "No local Atlas deployment found with that name or container ID.\n\
+                 Use `list()` to see the existing deployments."
+            }
+            RsGetDeploymentError::ContainerInspect(_) => {
+                "Failed to inspect the deployment's container"
+            }
+            RsGetDeploymentError::IntoDeployment(_) => {
+                "The container is not a local Atlas deployment"
+            }
+        };
+
+        PyErr::new::<GetDeploymentError, _>(message)
+    }
+}
+
+impl IntoPyErr for RsGetLogsError {
+    fn into_pyerr(self) -> PyErr {
+        match self {
+            RsGetLogsError::ContainerLogs(_) => {
+                PyErr::new::<GetLogsError, _>("Failed to retrieve the deployment's logs")
             }
         }
     }
@@ -175,19 +253,80 @@ impl IntoPyErr for RsCreateDeploymentError {
 
 impl IntoPyErr for RsWatchDeploymentError {
     fn into_pyerr(self) -> PyErr {
-        let message = self.to_string();
-
         match self {
-            RsWatchDeploymentError::Timeout { .. } => {
-                PyErr::new::<DeploymentTimeoutError, _>(message)
+            RsWatchDeploymentError::Timeout { deployment_name } => {
+                PyErr::new::<DeploymentTimeoutError, _>(format!(
+                    "Deployment {deployment_name} did not become healthy within the configured timeout.\n\
+                     Increase `wait_until_healthy_timeout`, or inspect the deployment logs for additional details."
+                ))
             }
-            RsWatchDeploymentError::UnhealthyDeployment { .. } => {
-                PyErr::new::<UnhealthyDeploymentError, _>(message)
-            }
-            RsWatchDeploymentError::ContainerInspect(_) => {
-                PyErr::new::<WatchDeploymentError, _>(message)
-            }
+            RsWatchDeploymentError::UnhealthyDeployment {
+                deployment_name, ..
+            } => PyErr::new::<UnhealthyDeploymentError, _>(format!(
+                "Deployment {deployment_name} is unhealthy.\n\
+                 Inspect the deployment logs for additional details."
+            )),
+            RsWatchDeploymentError::ContainerInspect(_) => PyErr::new::<WatchDeploymentError, _>(
+                "Failed to inspect the deployment's container",
+            ),
         }
+    }
+}
+
+impl IntoPyErr for RsStartDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        match self {
+            RsStartDeploymentError::ContainerStart(_) => PyErr::new::<StartDeploymentError, _>(
+                "Failed to start the deployment.\n\
+                A paused deployment cannot be started; use `unpause()` or `stop()` first.",
+            ),
+            RsStartDeploymentError::GetDeployment(_) => {
+                PyErr::new::<StartDeploymentError, _>("Failed to verify the deployment's status")
+            }
+            RsStartDeploymentError::WatchDeployment(error) => error.into_pyerr(),
+        }
+    }
+}
+
+impl IntoPyErr for RsStopDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            // Stopping an already stopped or paused deployment is not an error.
+            RsStopDeploymentError::ContainerStop(_) => "Failed to stop the deployment's container",
+            RsStopDeploymentError::GetDeployment(_) => "Failed to verify the deployment's status",
+        };
+
+        PyErr::new::<StopDeploymentError, _>(message)
+    }
+}
+
+impl IntoPyErr for RsPauseDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            RsPauseDeploymentError::ContainerPause(_) => {
+                "Failed to pause the deployment.\n\
+                 Only a running deployment can be paused; use `unpause()` if it is already paused."
+            }
+            RsPauseDeploymentError::GetDeployment(_) => "Failed to verify the deployment's status",
+        };
+
+        PyErr::new::<PauseDeploymentError, _>(message)
+    }
+}
+
+impl IntoPyErr for RsUnpauseDeploymentError {
+    fn into_pyerr(self) -> PyErr {
+        let message = match self {
+            RsUnpauseDeploymentError::ContainerUnpause(_) => {
+                "Failed to unpause the deployment.\n\
+                 Only a paused deployment can be unpaused; use `start()` if it is stopped."
+            }
+            RsUnpauseDeploymentError::GetDeployment(_) => {
+                "Failed to verify the deployment's status"
+            }
+        };
+
+        PyErr::new::<UnpauseDeploymentError, _>(message)
     }
 }
 
@@ -252,35 +391,54 @@ mod tests {
     use atlas_local::DockerError as RsDockerError;
 
     #[test]
-    fn test_create_deployment_server_error_into_pyerr() {
-        let error = RsCreateDeploymentError::CreateContainer(RsDockerError::ServerError);
+    fn test_create_deployment_container_error_into_pyerr() {
+        let errors = [
+            RsCreateDeploymentError::CreateContainer(RsDockerError::ServerError),
+            RsCreateDeploymentError::CreateContainer(RsDockerError::Other {
+                status_code: Some(503),
+                message: "Service Unavailable".to_string(),
+            }),
+        ];
+
+        Python::initialize();
+        Python::attach(|py| {
+            for error in errors {
+                let py_error = error.into_pyerr();
+                assert!(py_error.is_instance_of::<CreateDeploymentError>(py));
+                assert_eq!(
+                    py_error.value(py).to_string(),
+                    "Docker failed to create the deployment's container"
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_deployment_not_found_into_pyerr() {
+        let error = RsGetDeploymentError::ContainerInspect(RsDockerError::NotFound);
 
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
-            assert!(py_error.is_instance_of::<CreateDeploymentError>(py));
+            assert!(py_error.is_instance_of::<GetDeploymentError>(py));
             assert_eq!(
                 py_error.value(py).to_string(),
-                "Failed to create container: internal server error"
+                "No local Atlas deployment found with that name or container ID.\n\
+                 Use `list()` to see the existing deployments."
             );
         });
     }
 
     #[test]
-    fn test_create_deployment_other_error_into_pyerr() {
-        let error = RsCreateDeploymentError::CreateContainer(RsDockerError::Other {
-            status_code: Some(503),
-            message: ("Service Unavailable").to_string(),
+    fn test_start_timeout_maps_to_timeout_error() {
+        let error = RsStartDeploymentError::WatchDeployment(RsWatchDeploymentError::Timeout {
+            deployment_name: "test_deployment".to_owned(),
         });
 
         Python::initialize();
         Python::attach(|py| {
             let py_error = error.into_pyerr();
-            assert!(py_error.is_instance_of::<CreateDeploymentError>(py));
-            assert_eq!(
-                py_error.value(py).to_string(),
-                "Failed to create container: docker error (status Some(503)): Service Unavailable"
-            );
+            assert!(py_error.is_instance_of::<DeploymentTimeoutError>(py));
         });
     }
 
@@ -295,7 +453,8 @@ mod tests {
             assert!(py_error.is_instance_of::<UnpauseDeploymentError>(py));
             assert_eq!(
                 py_error.value(py).to_string(),
-                "Failed to unpause container: container is not paused"
+                "Failed to unpause the deployment.\n\
+                 Only a paused deployment can be unpaused; use `start()` if it is stopped."
             );
         });
     }
@@ -313,7 +472,8 @@ mod tests {
             assert!(py_error.is_instance_of::<UnhealthyDeploymentError>(py));
             assert_eq!(
                 py_error.value(py).to_string(),
-                "Deployment test_deployment is not healthy [status: unhealthy]"
+                "Deployment test_deployment is unhealthy.\n\
+                 Inspect the deployment logs for additional details."
             );
         });
     }
@@ -331,8 +491,9 @@ mod tests {
             assert!(py_error.is_instance_of::<DeploymentTimeoutError>(py));
             assert_eq!(
                 py_error.value(py).to_string(),
-                "Error when waiting for deployment to become healthy: \
-                Timeout while waiting for container test_deployment to become healthy"
+                "The deployment test_deployment was created but did not become healthy within \
+                 the configured timeout.\n\
+                 Increase `wait_until_healthy_timeout`, or inspect the deployment logs for additional details."
             );
         });
     }
@@ -352,8 +513,9 @@ mod tests {
             assert!(py_error.is_instance_of::<UnhealthyDeploymentError>(py));
             assert_eq!(
                 py_error.value(py).to_string(),
-                "Error when waiting for deployment to become healthy: \
-                Deployment test_deployment is not healthy [status: unhealthy]"
+                "The deployment test_deployment was created but ended up in an unhealthy \
+                 state.\n\
+                 Inspect the deployment logs for additional details."
             );
         });
     }
