@@ -34,8 +34,10 @@ jobs:
             cibw-archs: "AMD64"
           - os: macos-15-intel
             cibw-archs: "x86_64"
+            macosx-deployment-target: "10.12"
           - os: macos-14
             cibw-archs: "arm64"
+            macosx-deployment-target: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,6 +48,7 @@ jobs:
           CIBW_BUILD: "cp310-*"
           CIBW_SKIP: "*-musllinux*"
           CIBW_ARCHS: ${{ matrix.cibw-archs }}
+          CIBW_ENVIRONMENT: ${{ matrix.macosx-deployment-target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macosx-deployment-target) || '' }}
       - name: Upload wheels
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
