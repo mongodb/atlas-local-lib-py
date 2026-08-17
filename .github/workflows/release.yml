@@ -79,8 +79,10 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [build-wheels, build-sdist]
-    # Only gate on the protected "release" environment (and its secrets) when
-    # actually publishing. PR and dry-run triggers build/attest only.
+    # Only gate on the protected "release" environment (and its secrets), request
+    # an OIDC token, and actually publish/attest when this is a real release.
+    # (PR and dry-run triggers just build; pull_request runs also can't get an
+    # id-token, since GitHub withholds OIDC from fork pull requests.)
     environment: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')) && 'release' || '' }}
     permissions:
       # Required for PyPI trusted publishing
@@ -95,6 +97,7 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Generate artifact attestation
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true') }}
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: 'dist/*'
