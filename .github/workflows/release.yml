@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - '*'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'Cargo.toml'
+      - 'pyproject.toml'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -74,7 +79,9 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [build-wheels, build-sdist]
-    environment: release
+    # Only gate on the protected "release" environment (and its secrets) when
+    # actually publishing. PR and dry-run triggers build/attest only.
+    environment: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')) && 'release' || '' }}
     permissions:
       # Required for PyPI trusted publishing
       id-token: write
@@ -92,7 +99,7 @@ jobs:
         with:
           subject-path: 'dist/*'
       - name: Publish to PyPI
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true') }}
         uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26 # v1.14.2
         with:
           packages-dir: dist
