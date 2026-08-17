@@ -11,7 +11,7 @@ style, test, ops. Add `!` after the type for a breaking change.
 ## Summary
 
 <!-- What changes and why. Link the Jira ticket if there is one. -->
-__Jira ticket:__
+_Jira ticket:_
 
 ## Type of change
 
