@@ -1,0 +1,102 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Exact version (for example 0.1.0) or major, minor, patch"
+        required: true
+        default: patch
+        type: string
+
+run-name: "Prepare release: ${{ inputs.version }}"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Update version and changelog
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Validate version input
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$INPUT_VERSION" =~ ^(major|minor|patch)$ ]] && [[ ! "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version input '$INPUT_VERSION'. Must be 'major', 'minor', 'patch', or a semver version (e.g. 1.2.3)."
+            exit 1
+          fi
+
+      - name: Set Apix Bot token
+        id: app-token
+        uses: mongodb/apix-action/token@8549161120ce38b1e132ff833302a0ecbde58038 # v14
+        with:
+          app-id: ${{ secrets.APIXBOT_APP_ID }}
+          private-key: ${{ secrets.APIXBOT_APP_PEM }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
+
+      - name: Install cargo-edit
+        run: cargo binstall --no-confirm --locked cargo-edit
+
+      - name: Update Cargo.toml version
+        id: cargo-version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          case "$INPUT_VERSION" in
+            major|minor|patch)
+              cargo set-version --bump "$INPUT_VERSION"
+              ;;
+            *)
+              cargo set-version "$INPUT_VERSION"
+              ;;
+          esac
+          VERSION="$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if the tag already exists
+        env:
+          VERSION: ${{ steps.cargo-version.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "::error::Tag v${VERSION} already exists."
+            exit 1
+          fi
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.cargo-version.outputs.version }} --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Commit version changes and create tag
+        env:
+          GIT_USER_NAME: ${{ steps.app-token.outputs.user-name }}
+          GIT_USER_EMAIL: ${{ steps.app-token.outputs.user-email }}
+          VERSION: ${{ steps.cargo-version.outputs.version }}
+        run: |
+          git config user.name "$GIT_USER_NAME"
+          git config user.email "$GIT_USER_EMAIL"
+          git add Cargo.toml Cargo.lock CHANGELOG.md
+          git commit -m "chore(release): prepare for ${VERSION}"
+          git tag "v${VERSION}"
+          git push origin HEAD:main
+          git push origin "v${VERSION}"
