@@ -13,8 +13,9 @@ dependencies = [
 
 [[package]]
 name = "atlas-local"
-version = "0.7.1"
-source = "git+https://github.com/mongodb/atlas-local-lib?rev=7da5c550b35def921d26c296861ef5399155547f#7da5c550b35def921d26c296861ef5399155547f"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e55613eb0a72f71ec1ec724254824866564ac0e7a0f3bdd28457b35eb723940a"
 dependencies = [
  "bollard",
  "bytes",
@@ -32,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "atlas-local-lib-py"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 dependencies = [
  "atlas-local",
  "chrono",
