@@ -24,6 +24,7 @@ dynamic = ["version"]
 Homepage = "https://github.com/mongodb/atlas-local-lib-py"
 Repository = "https://github.com/mongodb/atlas-local-lib-py"
 Issues = "https://github.com/mongodb/atlas-local-lib-py/issues"
+Changelog = "https://github.com/mongodb/atlas-local-lib-py/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 test = ["pytest", "pymongo"]

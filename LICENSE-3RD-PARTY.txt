@@ -883,7 +883,7 @@ Software.
 -----------------------------------------------------------------------------
                         Apache License 2.0
         applies to:
-        - atlas-local 0.7.1 (https://github.com/mongodb/atlas-local-lib)
+        - atlas-local 0.8.0 (https://github.com/mongodb/atlas-local-lib)
 -----------------------------------------------------------------------------
 
                                  Apache License
