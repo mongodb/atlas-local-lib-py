@@ -76,10 +76,7 @@ files_json="$(
   done | jq -s '.'
 )"
 
-payload="$(mktemp)"
-trap 'rm -f "$payload"' EXIT
-
-jq -n \
+result="$(jq -n \
   --arg query "$QUERY" \
   --arg repository "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be set}" \
   --arg branch "$BRANCH" \
@@ -92,11 +89,10 @@ jq -n \
      expectedHeadOid: $expectedHeadOid,
      message: $message,
      files: $files
-   }}' > "$payload"
-
-result="$(gh api graphql --input "$payload" \
-  --jq '[.data.createCommitOnBranch.commit.oid,
-         .data.createCommitOnBranch.commit.signature.wasSignedByGitHub] | @tsv')"
+   }}' \
+  | gh api graphql --input - \
+      --jq '[.data.createCommitOnBranch.commit.oid,
+             .data.createCommitOnBranch.commit.signature.wasSignedByGitHub] | @tsv')"
 
 read -r COMMIT_SHA SIGNED <<<"$result"
 
