@@ -14,6 +14,13 @@ run-name: "Prepare release: ${{ inputs.version }}"
 permissions:
   contents: write
 
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+env:
+  CARGO_EDIT_VERSION: "0.13.13"
+
 jobs:
   prepare:
     name: Update version and changelog
@@ -50,7 +57,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
 
       - name: Install cargo-edit
-        run: cargo binstall --no-confirm --locked cargo-edit
+        run: cargo binstall --no-confirm --locked --version "${CARGO_EDIT_VERSION}" cargo-edit
 
       - name: Update Cargo.toml version
         id: cargo-version
@@ -87,16 +94,18 @@ jobs:
           OUTPUT: CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
 
-      - name: Commit version changes and create tag
+      - name: Commit version changes
+        id: commit
         env:
-          GIT_USER_NAME: ${{ steps.app-token.outputs.user-name }}
-          GIT_USER_EMAIL: ${{ steps.app-token.outputs.user-email }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ steps.cargo-version.outputs.version }}
+        run: ./scripts/create-signed-commit.sh Cargo.toml Cargo.lock CHANGELOG.md
+
+      - name: Create and push tag
+        env:
+          VERSION: ${{ steps.cargo-version.outputs.version }}
+          COMMIT: ${{ steps.commit.outputs.commit }}
         run: |
-          git config user.name "$GIT_USER_NAME"
-          git config user.email "$GIT_USER_EMAIL"
-          git add Cargo.toml Cargo.lock CHANGELOG.md
-          git commit -m "chore(release): prepare for ${VERSION}"
-          git tag "v${VERSION}"
-          git push origin HEAD:main
+          git fetch origin main
+          git tag "v${VERSION}" "$COMMIT"
           git push origin "v${VERSION}"
