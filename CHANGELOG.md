@@ -1,3 +1,9 @@
+## [0.1.0-alpha.1] - 2026-08-24
+
+### ⚙️ Miscellaneous Tasks
+
+- Add CODEOWNERS ([#50](https://github.com/mongodb/atlas-local-lib-py/pull/50))
+- Make apix-bot release commits verified ([#57](https://github.com/mongodb/atlas-local-lib-py/pull/57))
 ## [0.1.0-alpha.0] - 2026-08-19
 
 ### 🚀 Features
