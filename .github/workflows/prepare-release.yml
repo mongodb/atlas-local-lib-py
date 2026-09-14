@@ -57,7 +57,13 @@ jobs:
         uses: cargo-bins/cargo-binstall@75b4bfae1b2c753a6806bbce6e6cb89b602de33c # v1.22.0
 
       - name: Install cargo-edit
-        run: cargo binstall --no-confirm --locked --version "${CARGO_EDIT_VERSION}" cargo-edit
+        env:
+          # Without a token binstall hits the unauthenticated GitHub API rate
+          # limit, silently falls back to a source build and can leave no binary.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cargo binstall --no-confirm --locked --version "${CARGO_EDIT_VERSION}" cargo-edit
+          cargo set-version --version
 
       - name: Update Cargo.toml version
         id: cargo-version
