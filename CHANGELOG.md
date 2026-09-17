@@ -1,3 +1,10 @@
+## [1.0.0] - 2026-09-17
+
+### ⚙️ Miscellaneous Tasks
+
+- Apix-action updates ([#68](https://github.com/mongodb/atlas-local-lib-py/pull/68))
+- Apix-action updates ([#72](https://github.com/mongodb/atlas-local-lib-py/pull/72))
+- Authenticate cargo-binstall and verify installed binaries ([#73](https://github.com/mongodb/atlas-local-lib-py/pull/73))
 ## [0.1.0-alpha.1] - 2026-08-24
 
 ### ⚙️ Miscellaneous Tasks
