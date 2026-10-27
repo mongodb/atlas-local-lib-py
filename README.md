@@ -26,6 +26,22 @@ print(deployment.container_id)
 print(deployment.state)
 ```
 
+When using a Voyage API key that needs a non-default gateway, pass the full
+embeddings URL as `embedding_provider_endpoint`:
+
+```python
+deployment = LocalDeployment.create(
+    name="my-local-deployment",
+    voyage_api_key="<key>",
+    embedding_provider_endpoint="https://api.voyageai.com/v1/embeddings",
+)
+```
+
+Use `https://ai.mongodb.com/v1/embeddings` for Atlas-issued production keys
+and `https://api.voyageai.com/v1/embeddings` for keys created directly with
+Voyage AI. For an Atlas staging key, provide its gateway, such as
+`https://ai-stage.mongodb.com/v1/embeddings`.
+
 ### Get or create a deployment
 
 Use `get_or_create` to reuse an existing deployment with matching options, or create a new one if it doesn't exist.
@@ -33,6 +49,11 @@ Use `get_or_create` to reuse an existing deployment with matching options, or cr
 ```python
 deployment = LocalDeployment.get_or_create(name="my-local-deployment")
 ```
+
+Creation options such as `voyage_api_key` and `embedding_provider_endpoint` are
+also accepted by `get_or_create`. If a deployment with the same name already
+exists but was created with a different endpoint, `get_or_create` raises a
+`ValueError` instead of reusing it.
 
 ### Get an existing deployment
 

@@ -21,6 +21,7 @@ pub(crate) struct CreateArgs {
     pub mongodb_initdb_root_username: Option<String>,
     pub mongodb_initdb_root_password: Option<String>,
     pub voyage_api_key: Option<String>,
+    pub embedding_provider_endpoint: Option<String>,
     pub do_not_track: Option<bool>,
 }
 
@@ -103,6 +104,7 @@ pub(crate) fn build_create_deployment_options(
         mongodb_initdb_root_username: args.mongodb_initdb_root_username,
         mongodb_initdb_root_password: args.mongodb_initdb_root_password,
         voyage_api_key: args.voyage_api_key,
+        embedding_provider_endpoint: args.embedding_provider_endpoint,
         do_not_track: args.do_not_track,
         ..Default::default()
     })
@@ -133,6 +135,7 @@ mod tests {
             mongodb_initdb_root_username: None,
             mongodb_initdb_root_password: None,
             voyage_api_key: None,
+            embedding_provider_endpoint: None,
             do_not_track: None,
         }
     }
@@ -282,6 +285,7 @@ mod tests {
             mongodb_initdb_root_username: Some("user".into()),
             mongodb_initdb_root_password: Some("pass".into()),
             voyage_api_key: Some("key".into()),
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".into()),
             do_not_track: Some(true),
         };
 
@@ -299,6 +303,10 @@ mod tests {
             Some("pass")
         );
         assert_eq!(options.voyage_api_key.as_deref(), Some("key"));
+        assert_eq!(
+            options.embedding_provider_endpoint.as_deref(),
+            Some("https://api.voyageai.com/v1/embeddings")
+        );
         assert_eq!(options.local_seed_location.as_deref(), Some("/seed"));
         assert_eq!(
             options.wait_until_healthy_timeout,

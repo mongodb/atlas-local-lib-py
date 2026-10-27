@@ -3,6 +3,7 @@ These tests need a running Docker daemon.
 Run them locally with: pytest -m integration
 """
 
+import subprocess
 import uuid
 
 import atlas_local
@@ -74,3 +75,32 @@ def test_full_lifecycle(deployment):
     with pytest.raises(atlas_local.GetDeploymentError):
         LocalDeployment.get(name)
     assert name not in [listed.name for listed in LocalDeployment.list()]
+
+
+def test_create_passes_embedding_provider_endpoint_to_container():
+    name = f"test-embedding-endpoint-{uuid.uuid4().hex[:8]}"
+    endpoint = "https://api.voyageai.com/v1/embeddings"
+    deployment = LocalDeployment.create(
+        name=name,
+        voyage_api_key="test-voyage-api-key",
+        embedding_provider_endpoint=endpoint,
+    )
+
+    try:
+        environment = subprocess.run(
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{range .Config.Env}}{{println .}}{{end}}",
+                deployment.container_id,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+
+        assert "VOYAGE_API_KEY=test-voyage-api-key" in environment
+        assert f"EMBEDDING_PROVIDER_ENDPOINT={endpoint}" in environment
+    finally:
+        LocalDeployment.delete_deployment(deployment.container_id)

@@ -108,6 +108,13 @@ pub(crate) fn ensure_options_match(
     );
 
     compare(
+        "embedding_provider_endpoint",
+        options.embedding_provider_endpoint.as_ref(),
+        deployment.embedding_provider_endpoint.as_ref(),
+        &mut conflicts,
+    );
+
+    compare(
         "do_not_track",
         options.do_not_track.as_ref(),
         Some(&deployment.do_not_track),
@@ -155,6 +162,7 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_load_sample_data: Some(true),
             voyage_api_key: Some("a-key".to_owned()),
+            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
             mongot_log_file: None,
             runner_log_file: None,
             do_not_track: true,
@@ -178,6 +186,7 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_initdb_root_password: Some("a-password".to_owned()),
             voyage_api_key: Some("a-key".to_owned()),
+            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
             do_not_track: Some(true),
             ..Default::default()
         }
@@ -197,6 +206,7 @@ mod tests {
             mongodb_initdb_root_username: Some("another-username".to_owned()),
             mongodb_initdb_root_password: Some("another-password".to_owned()),
             voyage_api_key: Some("another-key".to_owned()),
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".to_owned()),
             do_not_track: Some(false),
             ..Default::default()
         }
@@ -232,9 +242,51 @@ mod tests {
                 "Deployment \"a-deployment\" already exists and does not match the requested \
                  options: image, image_tag, port, ip (the deployment is bound to a different \
                  address), local_seed_location, load_sample_data, mongodb_initdb_root_username, \
-                 mongodb_initdb_root_password, voyage_api_key, do_not_track. Delete it first or \
-                 omit the conflicting options."
+                 mongodb_initdb_root_password, voyage_api_key, embedding_provider_endpoint, \
+                 do_not_track. Delete it first or omit the conflicting options."
             );
+        });
+    }
+
+    #[test]
+    fn test_different_embedding_provider_endpoint_rejected() {
+        Python::initialize();
+        Python::attach(|py| {
+            let error = ensure_options_match(
+                "a-deployment",
+                &deployment_fixture(),
+                &CreateDeploymentOptions {
+                    embedding_provider_endpoint: Some(
+                        "https://api.voyageai.com/v1/embeddings".to_owned(),
+                    ),
+                    ..requested_options_matching()
+                },
+            )
+            .unwrap_err();
+
+            assert_eq!(
+                error.value(py).to_string(),
+                "Deployment \"a-deployment\" already exists and does not match the requested \
+                 options: embedding_provider_endpoint. Delete it first or omit the conflicting \
+                 options."
+            );
+        });
+    }
+
+    #[test]
+    fn test_unrequested_embedding_provider_endpoint_is_ignored() {
+        Python::initialize();
+        Python::attach(|_| {
+            let result = ensure_options_match(
+                "a-deployment",
+                &deployment_fixture(),
+                &CreateDeploymentOptions {
+                    embedding_provider_endpoint: None,
+                    ..requested_options_matching()
+                },
+            );
+
+            assert!(result.is_ok());
         });
     }
 
