@@ -6,7 +6,7 @@ use atlas_local::models::{CreateDeploymentOptions, Deployment, MongoDBPortBindin
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-fn compare<T: PartialEq + ?Sized>(
+fn compare<T: PartialEq>(
     field: &str,
     requested: Option<&T>,
     existing: Option<&T>,
@@ -49,8 +49,6 @@ pub(crate) fn ensure_options_match(
     name: &str,
     deployment: &Deployment,
     options: &CreateDeploymentOptions,
-    requested_embedding_provider_endpoint: Option<&str>,
-    existing_embedding_provider_endpoint: Option<&str>,
 ) -> PyResult<()> {
     let mut conflicts = Vec::new();
 
@@ -111,8 +109,8 @@ pub(crate) fn ensure_options_match(
 
     compare(
         "embedding_provider_endpoint",
-        requested_embedding_provider_endpoint,
-        existing_embedding_provider_endpoint,
+        options.embedding_provider_endpoint.as_ref(),
+        deployment.embedding_provider_endpoint.as_ref(),
         &mut conflicts,
     );
 
@@ -164,6 +162,7 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_load_sample_data: Some(true),
             voyage_api_key: Some("a-key".to_owned()),
+            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
             mongot_log_file: None,
             runner_log_file: None,
             do_not_track: true,
@@ -187,6 +186,7 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_initdb_root_password: Some("a-password".to_owned()),
             voyage_api_key: Some("a-key".to_owned()),
+            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
             do_not_track: Some(true),
             ..Default::default()
         }
@@ -206,6 +206,7 @@ mod tests {
             mongodb_initdb_root_username: Some("another-username".to_owned()),
             mongodb_initdb_root_password: Some("another-password".to_owned()),
             voyage_api_key: Some("another-key".to_owned()),
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".to_owned()),
             do_not_track: Some(false),
             ..Default::default()
         }
@@ -219,8 +220,6 @@ mod tests {
                 "a-deployment",
                 &deployment_fixture(),
                 &requested_options_matching(),
-                Some("https://ai.mongodb.com/v1/embeddings"),
-                Some("https://ai.mongodb.com/v1/embeddings"),
             );
 
             assert!(result.is_ok());
@@ -235,8 +234,6 @@ mod tests {
                 "a-deployment",
                 &deployment_fixture(),
                 &requested_options_not_matching(),
-                None,
-                None,
             )
             .unwrap_err();
 
@@ -245,8 +242,8 @@ mod tests {
                 "Deployment \"a-deployment\" already exists and does not match the requested \
                  options: image, image_tag, port, ip (the deployment is bound to a different \
                  address), local_seed_location, load_sample_data, mongodb_initdb_root_username, \
-                 mongodb_initdb_root_password, voyage_api_key, do_not_track. Delete it first or \
-                 omit the conflicting options."
+                 mongodb_initdb_root_password, voyage_api_key, embedding_provider_endpoint, \
+                 do_not_track. Delete it first or omit the conflicting options."
             );
         });
     }
@@ -258,9 +255,12 @@ mod tests {
             let error = ensure_options_match(
                 "a-deployment",
                 &deployment_fixture(),
-                &requested_options_matching(),
-                Some("https://api.voyageai.com/v1/embeddings"),
-                Some("https://ai.mongodb.com/v1/embeddings"),
+                &CreateDeploymentOptions {
+                    embedding_provider_endpoint: Some(
+                        "https://api.voyageai.com/v1/embeddings".to_owned(),
+                    ),
+                    ..requested_options_matching()
+                },
             )
             .unwrap_err();
 
@@ -280,9 +280,10 @@ mod tests {
             let result = ensure_options_match(
                 "a-deployment",
                 &deployment_fixture(),
-                &requested_options_matching(),
-                None,
-                Some("https://ai.mongodb.com/v1/embeddings"),
+                &CreateDeploymentOptions {
+                    embedding_provider_endpoint: None,
+                    ..requested_options_matching()
+                },
             );
 
             assert!(result.is_ok());

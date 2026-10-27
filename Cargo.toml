@@ -17,3 +17,7 @@ pyo3 = { version = "0.30.1", features = ["abi3-py310", "chrono", "multiple-pymet
 atlas-local = "0.8.0"
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
 chrono = "0.4"
+
+# Remove after atlas-local releases embedding_provider_endpoint support.
+[patch.crates-io]
+atlas-local = { git = "https://github.com/mongodb/atlas-local-lib", rev = "9abaa6abb0964977bd5b0bc00ebe8b79d590144e" }

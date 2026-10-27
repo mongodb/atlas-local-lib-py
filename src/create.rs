@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use crate::create_deployment_options::{CreateArgs, build_create_deployment_options};
 use crate::deployment::LocalDeployment;
-use crate::runtime::runtime_block_on_with_embedding_provider_endpoint;
+use crate::runtime::runtime_block_on;
 
 #[pymethods]
 impl LocalDeployment {
@@ -43,7 +43,7 @@ impl LocalDeployment {
         do_not_track: Option<bool>,
         embedding_provider_endpoint: Option<String>,
     ) -> PyResult<Self> {
-        let (options, embedding_provider_endpoint) = build_create_deployment_options(
+        let options = build_create_deployment_options(
             py,
             CreateArgs {
                 name,
@@ -67,11 +67,9 @@ impl LocalDeployment {
         // `create_deployment` must be called inside the Tokio runtime because it
         // spawns the deployment task. The returned progress value is then awaited
         // until the deployment completes.
-        let deployment = runtime_block_on_with_embedding_provider_endpoint(
-            py,
-            embedding_provider_endpoint,
-            |client, _docker| async move { client.create_deployment(options).await },
-        )?;
+        let deployment = runtime_block_on(py, |client| async move {
+            client.create_deployment(options).await
+        })?;
 
         Ok(LocalDeployment::from(deployment))
     }

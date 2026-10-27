@@ -1,23 +1,18 @@
 use atlas_local::{
     DockerError as RsDockerError,
-    bollard::{Docker, query_parameters::InspectContainerOptions},
     client::{
         CreateDeploymentError as RsCreateDeploymentError,
         GetDeploymentError as RsGetDeploymentError,
     },
-    models::{CreateDeploymentOptions, Deployment},
 };
 
 use pyo3::prelude::*;
 
 use crate::create_deployment_options::{CreateArgs, build_create_deployment_options};
 use crate::deployment::LocalDeployment;
-use crate::docker_with_embedding_provider_endpoint::{
-    DockerWithEmbeddingProviderEndpoint, embedding_provider_endpoint_from_inspect_response,
-};
 use crate::exceptions::IntoPyErr;
 use crate::option_conflicts::ensure_options_match;
-use crate::runtime::runtime_block_on_with_embedding_provider_endpoint;
+use crate::runtime::runtime_block_on;
 
 pub(crate) enum GetOrCreateDeploymentError {
     Get(RsGetDeploymentError),
@@ -36,47 +31,29 @@ impl IntoPyErr for GetOrCreateDeploymentError {
 }
 
 async fn find_deployment(
-    docker: &Docker,
+    client: &atlas_local::Client,
     name: &str,
-) -> Result<Option<(Deployment, Option<String>)>, RsGetDeploymentError> {
-    let response = match docker
-        .inspect_container(name, None::<InspectContainerOptions>)
-        .await
-    {
-        Ok(response) => response,
-        Err(error) => match RsDockerError::from(error) {
-            RsDockerError::NotFound => return Ok(None),
-            error => return Err(RsGetDeploymentError::ContainerInspect(error)),
-        },
-    };
+) -> Result<Option<atlas_local::models::Deployment>, RsGetDeploymentError> {
+    match client.get_deployment(name).await {
+        Ok(deployment) => Ok(Some(deployment)),
 
-    let embedding_provider_endpoint = embedding_provider_endpoint_from_inspect_response(&response);
-    let deployment =
-        Deployment::try_from(response).map_err(RsGetDeploymentError::IntoDeployment)?;
+        Err(RsGetDeploymentError::ContainerInspect(RsDockerError::NotFound)) => Ok(None),
 
-    Ok(Some((deployment, embedding_provider_endpoint)))
+        Err(error) => Err(error),
+    }
 }
 
 async fn get_or_create_deployment(
-    client: atlas_local::Client<DockerWithEmbeddingProviderEndpoint>,
-    docker: Docker,
+    client: atlas_local::Client,
     name: String,
-    options: CreateDeploymentOptions,
-    embedding_provider_endpoint: Option<String>,
+    options: atlas_local::models::CreateDeploymentOptions,
 ) -> Result<atlas_local::models::Deployment, GetOrCreateDeploymentError> {
-    if let Some((deployment, existing_embedding_provider_endpoint)) =
-        find_deployment(&docker, &name)
-            .await
-            .map_err(GetOrCreateDeploymentError::Get)?
+    if let Some(deployment) = find_deployment(&client, &name)
+        .await
+        .map_err(GetOrCreateDeploymentError::Get)?
     {
-        ensure_options_match(
-            &name,
-            &deployment,
-            &options,
-            embedding_provider_endpoint.as_deref(),
-            existing_embedding_provider_endpoint.as_deref(),
-        )
-        .map_err(GetOrCreateDeploymentError::OptionsMismatch)?;
+        ensure_options_match(&name, &deployment, &options)
+            .map_err(GetOrCreateDeploymentError::OptionsMismatch)?;
 
         return Ok(deployment);
     }
@@ -86,19 +63,13 @@ async fn get_or_create_deployment(
 
         Err(error @ RsCreateDeploymentError::ContainerAlreadyExists(_)) => {
             //Deployment might have been created by another process after we checked for it, so we try to get it again and check the options.
-            match find_deployment(&docker, &name)
+            match find_deployment(&client, &name)
                 .await
                 .map_err(GetOrCreateDeploymentError::Get)?
             {
-                Some((deployment, existing_embedding_provider_endpoint)) => {
-                    ensure_options_match(
-                        &name,
-                        &deployment,
-                        &options,
-                        embedding_provider_endpoint.as_deref(),
-                        existing_embedding_provider_endpoint.as_deref(),
-                    )
-                    .map_err(GetOrCreateDeploymentError::OptionsMismatch)?;
+                Some(deployment) => {
+                    ensure_options_match(&name, &deployment, &options)
+                        .map_err(GetOrCreateDeploymentError::OptionsMismatch)?;
 
                     Ok(deployment)
                 }
@@ -150,7 +121,7 @@ impl LocalDeployment {
         do_not_track: Option<bool>,
         embedding_provider_endpoint: Option<String>,
     ) -> PyResult<Self> {
-        let (options, embedding_provider_endpoint) = build_create_deployment_options(
+        let options = build_create_deployment_options(
             py,
             CreateArgs {
                 name: Some(name.clone()),
@@ -171,21 +142,9 @@ impl LocalDeployment {
             },
         )?;
 
-        let requested_embedding_provider_endpoint = embedding_provider_endpoint.clone();
-        let deployment = runtime_block_on_with_embedding_provider_endpoint(
-            py,
-            embedding_provider_endpoint,
-            move |client, docker| async move {
-                get_or_create_deployment(
-                    client,
-                    docker,
-                    name,
-                    options,
-                    requested_embedding_provider_endpoint,
-                )
-                .await
-            },
-        )?;
+        let deployment = runtime_block_on(py, move |client| {
+            get_or_create_deployment(client, name, options)
+        })?;
 
         Ok(LocalDeployment::from(deployment))
     }
