@@ -1,17 +1,20 @@
 # synced from apix-actions/.github/workflows/dependabot-jira.yaml
-name: Create Jira Ticket for Dependabot PRs
+name: Dependabot PR automation
 
 on:
   pull_request:
-    types: [opened]
+    # `synchronize` covers Dependabot rebases and recreates, which rewrite the PR
+    # branch without opening a new PR.
+    types: [opened, synchronize]
 
 permissions: {}
 
 jobs:
-  create-jira:
-    if: github.actor == 'dependabot[bot]'
-    permissions:
-      contents: read
-      pull-requests: write
-    uses: mongodb/apix-action/.github/workflows/_dependabot-jira.yaml@8c5007247643059c0d15c061290a345eb987657f # main
-    secrets: inherit
+  dependabot:
+    # Two gates. The author identifies a Dependabot PR and ignores the sync pull requests
+    # this app opens. The actor limits the trigger to Dependabot or this app's own
+    # post-update commit, so a push to the branch by anyone else does not start a run.
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && (github.actor == 'dependabot[bot]' || github.actor == 'apix-bot[bot]')
+    uses: mongodb/apix-action/.github/workflows/_dependabot-jira.yaml@e7551326cacca665760d81262207259c1ea7330e
+    secrets:
+      op_service_account_token: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}

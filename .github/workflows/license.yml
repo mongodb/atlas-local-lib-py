@@ -21,7 +21,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
@@ -44,12 +44,18 @@ jobs:
             ${{ runner.os }}-cargo-license-
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
+        uses: cargo-bins/cargo-binstall@8a2045612414e945291083f820cd50b4d8fc2218 # v1.26.0
 
       - name: Install cargo-deny and cargo-about
+        env:
+          # Without a token binstall hits the unauthenticated GitHub API rate
+          # limit, silently falls back to a source build and can leave no binary.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cargo binstall --no-confirm --locked --version "${CARGO_DENY_VERSION}" cargo-deny
           cargo binstall --no-confirm --locked --version "${CARGO_ABOUT_VERSION}" cargo-about
+          cargo deny --version
+          cargo about --version
 
       - name: Install package and Python tooling
         run: |
