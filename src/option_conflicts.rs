@@ -6,7 +6,7 @@ use atlas_local::models::{CreateDeploymentOptions, Deployment, MongoDBPortBindin
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-fn compare<T: PartialEq>(
+fn compare<T: PartialEq + ?Sized>(
     field: &str,
     requested: Option<&T>,
     existing: Option<&T>,
@@ -49,6 +49,8 @@ pub(crate) fn ensure_options_match(
     name: &str,
     deployment: &Deployment,
     options: &CreateDeploymentOptions,
+    requested_embedding_provider_endpoint: Option<&str>,
+    existing_embedding_provider_endpoint: Option<&str>,
 ) -> PyResult<()> {
     let mut conflicts = Vec::new();
 
@@ -104,6 +106,13 @@ pub(crate) fn ensure_options_match(
         "voyage_api_key",
         options.voyage_api_key.as_ref(),
         deployment.voyage_api_key.as_ref(),
+        &mut conflicts,
+    );
+
+    compare(
+        "embedding_provider_endpoint",
+        requested_embedding_provider_endpoint,
+        existing_embedding_provider_endpoint,
         &mut conflicts,
     );
 
@@ -210,6 +219,8 @@ mod tests {
                 "a-deployment",
                 &deployment_fixture(),
                 &requested_options_matching(),
+                Some("https://ai.mongodb.com/v1/embeddings"),
+                Some("https://ai.mongodb.com/v1/embeddings"),
             );
 
             assert!(result.is_ok());
@@ -224,6 +235,8 @@ mod tests {
                 "a-deployment",
                 &deployment_fixture(),
                 &requested_options_not_matching(),
+                None,
+                None,
             )
             .unwrap_err();
 
@@ -235,6 +248,44 @@ mod tests {
                  mongodb_initdb_root_password, voyage_api_key, do_not_track. Delete it first or \
                  omit the conflicting options."
             );
+        });
+    }
+
+    #[test]
+    fn test_different_embedding_provider_endpoint_rejected() {
+        Python::initialize();
+        Python::attach(|py| {
+            let error = ensure_options_match(
+                "a-deployment",
+                &deployment_fixture(),
+                &requested_options_matching(),
+                Some("https://api.voyageai.com/v1/embeddings"),
+                Some("https://ai.mongodb.com/v1/embeddings"),
+            )
+            .unwrap_err();
+
+            assert_eq!(
+                error.value(py).to_string(),
+                "Deployment \"a-deployment\" already exists and does not match the requested \
+                 options: embedding_provider_endpoint. Delete it first or omit the conflicting \
+                 options."
+            );
+        });
+    }
+
+    #[test]
+    fn test_unrequested_embedding_provider_endpoint_is_ignored() {
+        Python::initialize();
+        Python::attach(|_| {
+            let result = ensure_options_match(
+                "a-deployment",
+                &deployment_fixture(),
+                &requested_options_matching(),
+                None,
+                Some("https://ai.mongodb.com/v1/embeddings"),
+            );
+
+            assert!(result.is_ok());
         });
     }
 

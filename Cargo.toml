@@ -20,7 +20,4 @@ chrono = "0.4"
 
 # Erase this when a new version of atlas-local is released.
 [patch.crates-io]
-atlas-local = {
-    git = "https://github.com/mongodb/atlas-local-lib",
-    rev = "7da5c550b35def921d26c296861ef5399155547f",
-}
+atlas-local = { git = "https://github.com/mongodb/atlas-local-lib", rev = "7da5c550b35def921d26c296861ef5399155547f" }

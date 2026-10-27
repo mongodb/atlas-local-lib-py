@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use crate::create_deployment_options::{CreateArgs, build_create_deployment_options};
 use crate::deployment::LocalDeployment;
-use crate::runtime::runtime_block_on;
+use crate::runtime::runtime_block_on_with_embedding_provider_endpoint;
 
 #[pymethods]
 impl LocalDeployment {
@@ -21,7 +21,8 @@ impl LocalDeployment {
         mongodb_initdb_root_username=None,
         mongodb_initdb_root_password=None,
         voyage_api_key=None,
-        do_not_track=None
+        do_not_track=None,
+        embedding_provider_endpoint=None
     ))]
     #[allow(clippy::too_many_arguments)]
     fn create(
@@ -40,8 +41,9 @@ impl LocalDeployment {
         mongodb_initdb_root_password: Option<String>,
         voyage_api_key: Option<String>,
         do_not_track: Option<bool>,
+        embedding_provider_endpoint: Option<String>,
     ) -> PyResult<Self> {
-        let options = build_create_deployment_options(
+        let (options, embedding_provider_endpoint) = build_create_deployment_options(
             py,
             CreateArgs {
                 name,
@@ -57,6 +59,7 @@ impl LocalDeployment {
                 mongodb_initdb_root_username,
                 mongodb_initdb_root_password,
                 voyage_api_key,
+                embedding_provider_endpoint,
                 do_not_track,
             },
         )?;
@@ -64,9 +67,11 @@ impl LocalDeployment {
         // `create_deployment` must be called inside the Tokio runtime because it
         // spawns the deployment task. The returned progress value is then awaited
         // until the deployment completes.
-        let deployment = runtime_block_on(py, |client| async move {
-            client.create_deployment(options).await
-        })?;
+        let deployment = runtime_block_on_with_embedding_provider_endpoint(
+            py,
+            embedding_provider_endpoint,
+            |client, _docker| async move { client.create_deployment(options).await },
+        )?;
 
         Ok(LocalDeployment::from(deployment))
     }

@@ -21,6 +21,7 @@ pub(crate) struct CreateArgs {
     pub mongodb_initdb_root_username: Option<String>,
     pub mongodb_initdb_root_password: Option<String>,
     pub voyage_api_key: Option<String>,
+    pub embedding_provider_endpoint: Option<String>,
     pub do_not_track: Option<bool>,
 }
 
@@ -64,7 +65,7 @@ fn running_in_jupyter(py: Python<'_>) -> bool {
 pub(crate) fn build_create_deployment_options(
     py: Python<'_>,
     args: CreateArgs,
-) -> PyResult<CreateDeploymentOptions> {
+) -> PyResult<(CreateDeploymentOptions, Option<String>)> {
     let image_tag = args
         .image_tag
         .as_deref()
@@ -89,23 +90,28 @@ pub(crate) fn build_create_deployment_options(
 
     let creation_source = Some(tool_identifier(running_in_jupyter(py)));
 
-    Ok(CreateDeploymentOptions {
-        name: args.name,
-        image: args.image,
-        skip_pull_image: args.skip_pull_image,
-        image_tag,
-        load_sample_data: args.load_sample_data,
-        mongodb_port_binding,
-        wait_until_healthy: args.wait_until_healthy,
-        wait_until_healthy_timeout,
-        creation_source,
-        local_seed_location: args.local_seed_location,
-        mongodb_initdb_root_username: args.mongodb_initdb_root_username,
-        mongodb_initdb_root_password: args.mongodb_initdb_root_password,
-        voyage_api_key: args.voyage_api_key,
-        do_not_track: args.do_not_track,
-        ..Default::default()
-    })
+    let embedding_provider_endpoint = args.embedding_provider_endpoint;
+
+    Ok((
+        CreateDeploymentOptions {
+            name: args.name,
+            image: args.image,
+            skip_pull_image: args.skip_pull_image,
+            image_tag,
+            load_sample_data: args.load_sample_data,
+            mongodb_port_binding,
+            wait_until_healthy: args.wait_until_healthy,
+            wait_until_healthy_timeout,
+            creation_source,
+            local_seed_location: args.local_seed_location,
+            mongodb_initdb_root_username: args.mongodb_initdb_root_username,
+            mongodb_initdb_root_password: args.mongodb_initdb_root_password,
+            voyage_api_key: args.voyage_api_key,
+            do_not_track: args.do_not_track,
+            ..Default::default()
+        },
+        embedding_provider_endpoint,
+    ))
 }
 
 #[cfg(test)]
@@ -113,7 +119,7 @@ mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
 
-    fn options_of(args: CreateArgs) -> PyResult<CreateDeploymentOptions> {
+    fn options_of(args: CreateArgs) -> PyResult<(CreateDeploymentOptions, Option<String>)> {
         Python::initialize();
         Python::attach(|py| build_create_deployment_options(py, args))
     }
@@ -133,13 +139,14 @@ mod tests {
             mongodb_initdb_root_username: None,
             mongodb_initdb_root_password: None,
             voyage_api_key: None,
+            embedding_provider_endpoint: None,
             do_not_track: None,
         }
     }
 
     #[test]
     fn test_leaving_binding_to_atlas_local() {
-        let options = options_of(empty_args()).unwrap();
+        let (options, _) = options_of(empty_args()).unwrap();
 
         assert_eq!(options.mongodb_port_binding, None);
     }
@@ -151,7 +158,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = options_of(args).unwrap();
+        let (options, _) = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -167,7 +174,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = options_of(args).unwrap();
+        let (options, _) = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -183,7 +190,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = options_of(args).unwrap();
+        let (options, _) = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -202,7 +209,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = options_of(args).unwrap();
+        let (options, _) = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -222,7 +229,7 @@ mod tests {
             ..empty_args()
         };
 
-        let options = options_of(args).unwrap();
+        let (options, _) = options_of(args).unwrap();
 
         assert_eq!(
             options.mongodb_port_binding,
@@ -282,10 +289,11 @@ mod tests {
             mongodb_initdb_root_username: Some("user".into()),
             mongodb_initdb_root_password: Some("pass".into()),
             voyage_api_key: Some("key".into()),
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".into()),
             do_not_track: Some(true),
         };
 
-        let options = options_of(args).unwrap();
+        let (options, embedding_provider_endpoint) = options_of(args).unwrap();
 
         assert_eq!(options.name.as_deref(), Some("n"));
         assert_eq!(options.image.as_deref(), Some("i"));
@@ -299,6 +307,10 @@ mod tests {
             Some("pass")
         );
         assert_eq!(options.voyage_api_key.as_deref(), Some("key"));
+        assert_eq!(
+            embedding_provider_endpoint.as_deref(),
+            Some("https://api.voyageai.com/v1/embeddings")
+        );
         assert_eq!(options.local_seed_location.as_deref(), Some("/seed"));
         assert_eq!(
             options.wait_until_healthy_timeout,

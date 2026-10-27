@@ -5,6 +5,7 @@ mod create;
 mod create_deployment_options;
 mod delete;
 mod deployment;
+mod docker_with_embedding_provider_endpoint;
 mod exceptions;
 mod get;
 mod get_or_create;
