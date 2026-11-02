@@ -17,7 +17,23 @@ def test_invalid_image_tag_raises_value_error():
 def test_non_https_embedding_provider_endpoint_raises_value_error():
     with pytest.raises(ValueError, match="absolute HTTPS URL"):
         atlas_local.LocalDeployment.create(
-            embedding_provider_endpoint="http://api.voyageai.com/v1/embeddings"
+            voyage_api_key="test-voyage-api-key",
+            embedding_provider_endpoint="http://api.voyageai.com/v1/embeddings",
+        )
+
+
+@pytest.mark.parametrize(
+    ("method", "kwargs"),
+    [
+        (atlas_local.LocalDeployment.create, {}),
+        (atlas_local.LocalDeployment.get_or_create, {"name": "missing-voyage-key"}),
+    ],
+)
+def test_embedding_provider_endpoint_requires_voyage_api_key(method, kwargs):
+    with pytest.raises(ValueError, match="voyage_api_key is required"):
+        method(
+            **kwargs,
+            embedding_provider_endpoint="https://api.voyageai.com/v1/embeddings",
         )
 
 

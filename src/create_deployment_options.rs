@@ -67,6 +67,17 @@ pub(crate) fn build_create_deployment_options(
     py: Python<'_>,
     args: CreateArgs,
 ) -> PyResult<CreateDeploymentOptions> {
+    if args.embedding_provider_endpoint.is_some()
+        && args
+            .voyage_api_key
+            .as_deref()
+            .is_none_or(|api_key| api_key.trim().is_empty())
+    {
+        return Err(PyValueError::new_err(
+            "voyage_api_key is required when embedding_provider_endpoint is set",
+        ));
+    }
+
     let image_tag = args
         .image_tag
         .as_deref()
@@ -271,6 +282,24 @@ mod tests {
             assert_eq!(
                 error.value(py).to_string(),
                 "wait_until_healthy_timeout must be non-negative number of seconds"
+            );
+        });
+    }
+
+    #[test]
+    fn test_embedding_provider_endpoint_requires_voyage_api_key() {
+        let args = CreateArgs {
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".into()),
+            ..empty_args()
+        };
+
+        Python::initialize();
+        Python::attach(|py| {
+            let error = build_create_deployment_options(py, args).unwrap_err();
+            assert!(error.is_instance_of::<PyValueError>(py));
+            assert_eq!(
+                error.value(py).to_string(),
+                "voyage_api_key is required when embedding_provider_endpoint is set"
             );
         });
     }
