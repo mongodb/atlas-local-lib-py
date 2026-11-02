@@ -20,4 +20,4 @@ chrono = "0.4"
 
 # Remove after atlas-local releases embedding_provider_endpoint support.
 [patch.crates-io]
-atlas-local = { git = "https://github.com/mongodb/atlas-local-lib", rev = "9abaa6abb0964977bd5b0bc00ebe8b79d590144e" }
+atlas-local = { git = "https://github.com/mongodb/atlas-local-lib", rev = "50bff196a901c34356ccf6e62db657538fbdaf0f" }

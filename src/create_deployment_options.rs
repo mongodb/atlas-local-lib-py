@@ -4,7 +4,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use atlas_local::models::{
-    BindingType, CreateDeploymentOptions, CreationSource, ImageTag, MongoDBPortBinding,
+    BindingType, CreateDeploymentOptions, CreationSource, EmbeddingProviderEndpoint, ImageTag,
+    MongoDBPortBinding,
 };
 
 pub(crate) struct CreateArgs {
@@ -89,6 +90,11 @@ pub(crate) fn build_create_deployment_options(
     let mongodb_port_binding = port_binding(args.port, args.ip.as_deref())?;
 
     let creation_source = Some(tool_identifier(running_in_jupyter(py)));
+    let embedding_provider_endpoint = args
+        .embedding_provider_endpoint
+        .map(EmbeddingProviderEndpoint::try_from)
+        .transpose()
+        .map_err(PyValueError::new_err)?;
 
     Ok(CreateDeploymentOptions {
         name: args.name,
@@ -104,7 +110,7 @@ pub(crate) fn build_create_deployment_options(
         mongodb_initdb_root_username: args.mongodb_initdb_root_username,
         mongodb_initdb_root_password: args.mongodb_initdb_root_password,
         voyage_api_key: args.voyage_api_key,
-        embedding_provider_endpoint: args.embedding_provider_endpoint,
+        embedding_provider_endpoint,
         do_not_track: args.do_not_track,
         ..Default::default()
     })
@@ -304,7 +310,11 @@ mod tests {
         );
         assert_eq!(options.voyage_api_key.as_deref(), Some("key"));
         assert_eq!(
-            options.embedding_provider_endpoint.as_deref(),
+            options
+                .embedding_provider_endpoint
+                .as_ref()
+                .map(ToString::to_string)
+                .as_deref(),
             Some("https://api.voyageai.com/v1/embeddings")
         );
         assert_eq!(options.local_seed_location.as_deref(), Some("/seed"));

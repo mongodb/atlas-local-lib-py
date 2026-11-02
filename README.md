@@ -27,7 +27,7 @@ print(deployment.state)
 ```
 
 When using a Voyage API key that needs a non-default gateway, pass the full
-embeddings URL as `embedding_provider_endpoint`:
+HTTPS embeddings URL as `embedding_provider_endpoint`:
 
 ```python
 deployment = LocalDeployment.create(

@@ -135,8 +135,14 @@ pub(crate) fn ensure_options_match(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use atlas_local::models::{BindingType, ImageTag, MongodbType, State};
+    use atlas_local::models::{
+        BindingType, EmbeddingProviderEndpoint, ImageTag, MongodbType, State,
+    };
     use std::net::{IpAddr, Ipv4Addr};
+
+    fn embedding_provider_endpoint(value: &str) -> EmbeddingProviderEndpoint {
+        EmbeddingProviderEndpoint::try_from(value).unwrap()
+    }
 
     fn deployment_fixture() -> Deployment {
         Deployment {
@@ -162,7 +168,9 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_load_sample_data: Some(true),
             voyage_api_key: Some("a-key".to_owned()),
-            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
+            embedding_provider_endpoint: Some(embedding_provider_endpoint(
+                "https://ai.mongodb.com/v1/embeddings",
+            )),
             mongot_log_file: None,
             runner_log_file: None,
             do_not_track: true,
@@ -186,7 +194,9 @@ mod tests {
             mongodb_initdb_root_username: Some("a-username".to_owned()),
             mongodb_initdb_root_password: Some("a-password".to_owned()),
             voyage_api_key: Some("a-key".to_owned()),
-            embedding_provider_endpoint: Some("https://ai.mongodb.com/v1/embeddings".to_owned()),
+            embedding_provider_endpoint: Some(embedding_provider_endpoint(
+                "https://ai.mongodb.com/v1/embeddings",
+            )),
             do_not_track: Some(true),
             ..Default::default()
         }
@@ -206,7 +216,9 @@ mod tests {
             mongodb_initdb_root_username: Some("another-username".to_owned()),
             mongodb_initdb_root_password: Some("another-password".to_owned()),
             voyage_api_key: Some("another-key".to_owned()),
-            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".to_owned()),
+            embedding_provider_endpoint: Some(embedding_provider_endpoint(
+                "https://api.voyageai.com/v1/embeddings",
+            )),
             do_not_track: Some(false),
             ..Default::default()
         }
@@ -256,9 +268,9 @@ mod tests {
                 "a-deployment",
                 &deployment_fixture(),
                 &CreateDeploymentOptions {
-                    embedding_provider_endpoint: Some(
-                        "https://api.voyageai.com/v1/embeddings".to_owned(),
-                    ),
+                    embedding_provider_endpoint: Some(embedding_provider_endpoint(
+                        "https://api.voyageai.com/v1/embeddings",
+                    )),
                     ..requested_options_matching()
                 },
             )

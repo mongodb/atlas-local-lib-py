@@ -14,6 +14,13 @@ def test_invalid_image_tag_raises_value_error():
         atlas_local.LocalDeployment.create(image_tag="not-a-tag")
 
 
+def test_non_https_embedding_provider_endpoint_raises_value_error():
+    with pytest.raises(ValueError, match="absolute HTTPS URL"):
+        atlas_local.LocalDeployment.create(
+            embedding_provider_endpoint="http://api.voyageai.com/v1/embeddings"
+        )
+
+
 def test_unknown_kwarg_raises_type_error():
     with pytest.raises(TypeError):
         atlas_local.LocalDeployment.create(nonexistent_option=True)
