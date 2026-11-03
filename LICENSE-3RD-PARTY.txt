@@ -3919,7 +3919,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                         MIT License
         applies to:
         - tokio-util 0.7.18 (https://github.com/tokio-rs/tokio)
-        - tokio 1.53.3 (https://github.com/tokio-rs/tokio)
+        - tokio 1.54.1 (https://github.com/tokio-rs/tokio)
 -----------------------------------------------------------------------------
 
 MIT License
