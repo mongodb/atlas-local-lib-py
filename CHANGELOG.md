@@ -1,3 +1,18 @@
+## [1.0.1] - 2026-11-03
+
+### 🚀 Features
+
+- Support embedding provider endpoint ([#111](https://github.com/mongodb/atlas-local-lib-py/pull/111))
+
+### ⚙️ Miscellaneous Tasks
+
+- Apix-action updates ([#90](https://github.com/mongodb/atlas-local-lib-py/pull/90))
+- Move third-party license generation into the Dependabot post-update hook ([#91](https://github.com/mongodb/atlas-local-lib-py/pull/91))
+- Apix-action updates ([#92](https://github.com/mongodb/atlas-local-lib-py/pull/92))
+- Apix-action updates ([#93](https://github.com/mongodb/atlas-local-lib-py/pull/93))
+- Apix-action updates ([#100](https://github.com/mongodb/atlas-local-lib-py/pull/100))
+- Apix-action updates ([#101](https://github.com/mongodb/atlas-local-lib-py/pull/101))
+- Apix-action updates ([#102](https://github.com/mongodb/atlas-local-lib-py/pull/102))
 ## [1.0.0] - 2026-09-17
 
 ### ⚙️ Miscellaneous Tasks

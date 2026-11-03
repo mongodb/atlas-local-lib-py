@@ -34,7 +34,7 @@ dependencies = [
 
 [[package]]
 name = "atlas-local-lib-py"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "atlas-local",
  "chrono",
