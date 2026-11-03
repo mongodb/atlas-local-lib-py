@@ -4,7 +4,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use atlas_local::models::{
-    BindingType, CreateDeploymentOptions, CreationSource, ImageTag, MongoDBPortBinding,
+    BindingType, CreateDeploymentOptions, CreationSource, EmbeddingProviderEndpoint, ImageTag,
+    MongoDBPortBinding,
 };
 
 pub(crate) struct CreateArgs {
@@ -21,6 +22,7 @@ pub(crate) struct CreateArgs {
     pub mongodb_initdb_root_username: Option<String>,
     pub mongodb_initdb_root_password: Option<String>,
     pub voyage_api_key: Option<String>,
+    pub embedding_provider_endpoint: Option<String>,
     pub do_not_track: Option<bool>,
 }
 
@@ -65,6 +67,17 @@ pub(crate) fn build_create_deployment_options(
     py: Python<'_>,
     args: CreateArgs,
 ) -> PyResult<CreateDeploymentOptions> {
+    if args.embedding_provider_endpoint.is_some()
+        && args
+            .voyage_api_key
+            .as_deref()
+            .is_none_or(|api_key| api_key.trim().is_empty())
+    {
+        return Err(PyValueError::new_err(
+            "voyage_api_key is required when embedding_provider_endpoint is set",
+        ));
+    }
+
     let image_tag = args
         .image_tag
         .as_deref()
@@ -88,6 +101,11 @@ pub(crate) fn build_create_deployment_options(
     let mongodb_port_binding = port_binding(args.port, args.ip.as_deref())?;
 
     let creation_source = Some(tool_identifier(running_in_jupyter(py)));
+    let embedding_provider_endpoint = args
+        .embedding_provider_endpoint
+        .map(EmbeddingProviderEndpoint::try_from)
+        .transpose()
+        .map_err(PyValueError::new_err)?;
 
     Ok(CreateDeploymentOptions {
         name: args.name,
@@ -103,6 +121,7 @@ pub(crate) fn build_create_deployment_options(
         mongodb_initdb_root_username: args.mongodb_initdb_root_username,
         mongodb_initdb_root_password: args.mongodb_initdb_root_password,
         voyage_api_key: args.voyage_api_key,
+        embedding_provider_endpoint,
         do_not_track: args.do_not_track,
         ..Default::default()
     })
@@ -133,6 +152,7 @@ mod tests {
             mongodb_initdb_root_username: None,
             mongodb_initdb_root_password: None,
             voyage_api_key: None,
+            embedding_provider_endpoint: None,
             do_not_track: None,
         }
     }
@@ -267,6 +287,24 @@ mod tests {
     }
 
     #[test]
+    fn test_embedding_provider_endpoint_requires_voyage_api_key() {
+        let args = CreateArgs {
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".into()),
+            ..empty_args()
+        };
+
+        Python::initialize();
+        Python::attach(|py| {
+            let error = build_create_deployment_options(py, args).unwrap_err();
+            assert!(error.is_instance_of::<PyValueError>(py));
+            assert_eq!(
+                error.value(py).to_string(),
+                "voyage_api_key is required when embedding_provider_endpoint is set"
+            );
+        });
+    }
+
+    #[test]
     fn test_all_fields_are_mapped() {
         let args = CreateArgs {
             name: Some("n".into()),
@@ -282,6 +320,7 @@ mod tests {
             mongodb_initdb_root_username: Some("user".into()),
             mongodb_initdb_root_password: Some("pass".into()),
             voyage_api_key: Some("key".into()),
+            embedding_provider_endpoint: Some("https://api.voyageai.com/v1/embeddings".into()),
             do_not_track: Some(true),
         };
 
@@ -299,6 +338,14 @@ mod tests {
             Some("pass")
         );
         assert_eq!(options.voyage_api_key.as_deref(), Some("key"));
+        assert_eq!(
+            options
+                .embedding_provider_endpoint
+                .as_ref()
+                .map(ToString::to_string)
+                .as_deref(),
+            Some("https://api.voyageai.com/v1/embeddings")
+        );
         assert_eq!(options.local_seed_location.as_deref(), Some("/seed"));
         assert_eq!(
             options.wait_until_healthy_timeout,

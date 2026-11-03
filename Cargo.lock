@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "atlas-local"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e55613eb0a72f71ec1ec724254824866564ac0e7a0f3bdd28457b35eb723940a"
+checksum = "3b392659f02c1f2bfdba48ddb71e4714a8f506c2d8889467abe98c88eaf36ce2"
 dependencies = [
  "bollard",
  "bytes",
@@ -29,6 +29,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "typed-builder",
+ "url",
 ]
 
 [[package]]

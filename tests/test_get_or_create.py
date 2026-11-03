@@ -66,3 +66,27 @@ def test_re_running(name):
         assert client["sample_mflix"]["movies"].estimated_document_count() > 0
     finally:
         client.close()
+
+
+def test_embedding_provider_endpoint_is_compared_when_reusing(name):
+    endpoint = "https://api.voyageai.com/v1/embeddings"
+    created = LocalDeployment.get_or_create(
+        name=name,
+        voyage_api_key="test-voyage-api-key",
+        embedding_provider_endpoint=endpoint,
+    )
+
+    reused = LocalDeployment.get_or_create(
+        name=name,
+        voyage_api_key="test-voyage-api-key",
+        embedding_provider_endpoint=endpoint,
+    )
+
+    assert reused.container_id == created.container_id
+
+    with pytest.raises(ValueError, match="embedding_provider_endpoint"):
+        LocalDeployment.get_or_create(
+            name=name,
+            voyage_api_key="test-voyage-api-key",
+            embedding_provider_endpoint="https://ai.mongodb.com/v1/embeddings",
+        )

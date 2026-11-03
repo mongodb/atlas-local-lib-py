@@ -21,7 +21,8 @@ impl LocalDeployment {
         mongodb_initdb_root_username=None,
         mongodb_initdb_root_password=None,
         voyage_api_key=None,
-        do_not_track=None
+        do_not_track=None,
+        embedding_provider_endpoint=None
     ))]
     #[allow(clippy::too_many_arguments)]
     fn create(
@@ -40,6 +41,7 @@ impl LocalDeployment {
         mongodb_initdb_root_password: Option<String>,
         voyage_api_key: Option<String>,
         do_not_track: Option<bool>,
+        embedding_provider_endpoint: Option<String>,
     ) -> PyResult<Self> {
         let options = build_create_deployment_options(
             py,
@@ -57,6 +59,7 @@ impl LocalDeployment {
                 mongodb_initdb_root_username,
                 mongodb_initdb_root_password,
                 voyage_api_key,
+                embedding_provider_endpoint,
                 do_not_track,
             },
         )?;
