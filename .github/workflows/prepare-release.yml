@@ -46,6 +46,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
+          ref: main
           fetch-depth: 0
 
       - name: Install Rust toolchain
@@ -100,18 +101,45 @@ jobs:
           OUTPUT: CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
 
-      - name: Commit version changes
-        id: commit
+      - name: Create release pull request
+        id: create-release-pr
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          committer: >-
+            ${{ steps.app-token.outputs.user-name }}
+            <${{ steps.app-token.outputs.user-email }}>
+          author: >-
+            ${{ steps.app-token.outputs.user-name }}
+            <${{ steps.app-token.outputs.user-email }}>
+          sign-commits: true
+          add-paths: |
+            Cargo.toml
+            Cargo.lock
+            CHANGELOG.md
+          title: >-
+            chore(release): prepare for ${{ steps.cargo-version.outputs.version }}
+          commit-message: >-
+            chore(release): prepare for ${{ steps.cargo-version.outputs.version }}
+          branch: "release/prepare-v${{ steps.cargo-version.outputs.version }}"
+          base: main
+          body: >-
+            Prepare the ${{ steps.cargo-version.outputs.version }} release.
+
+            Review and approve this PR. Auto-merge will complete it after
+            required checks pass. Merging triggers the Tag Release workflow.
+      - name: Request Jira ticket
+        if: steps.create-release-pr.outputs.pull-request-operation == 'created'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          VERSION: ${{ steps.cargo-version.outputs.version }}
-        run: ./scripts/create-signed-commit.sh Cargo.toml Cargo.lock CHANGELOG.md
-
-      - name: Create and push tag
+          PR_NUMBER: ${{ steps.create-release-pr.outputs.pull-request-number }}
+        run: gh pr edit "$PR_NUMBER" --add-label create_jira
+      - name: Enable auto-merge
+        if: steps.create-release-pr.outputs.pull-request-number != ''
         env:
-          VERSION: ${{ steps.cargo-version.outputs.version }}
-          COMMIT: ${{ steps.commit.outputs.commit }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.create-release-pr.outputs.pull-request-number }}
         run: |
-          git fetch origin main
-          git tag "v${VERSION}" "$COMMIT"
-          git push origin "v${VERSION}"
+          if [ "$(gh pr view "$PR_NUMBER" --json autoMergeRequest --jq '.autoMergeRequest != null')" != "true" ]; then
+            gh pr merge "$PR_NUMBER" --auto --squash
+          fi

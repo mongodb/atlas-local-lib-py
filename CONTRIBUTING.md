@@ -101,6 +101,17 @@ PYTHON="$(which python)" ./scripts/generate-third-party.sh
 Commit the result. `cargo deny check licenses` and
 `./scripts/check-python-licenses.sh` enforce the license policy itself.
 
+## Releasing
+
+1. Run **Prepare Release** from the `main` branch in GitHub Actions with the
+   exact version or a `major`, `minor`, or `patch` bump.
+2. Review and approve the generated `release/prepare-v<version>` pull request.
+   It contains the version and changelog changes and uses a signed commit.
+   Auto-merge completes it after required checks pass.
+3. After the PR merges, **Tag Release** pushes the matching `v<version>` tag.
+   The tag starts the existing `release.yml` workflow to build and publish the
+   release.
+
 ## Pull requests
 
 Titles must follow [conventional commits](https://www.conventionalcommits.org),
